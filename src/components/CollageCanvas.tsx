@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas as FabricCanvas } from 'fabric';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   const [selectedGrid, setSelectedGrid] = useState<GridType | null>(null);
   const [isGridVisible, setIsGridVisible] = useState(false);
   const [selectedCellIndex, setSelectedCellIndex] = useState<number | null>(null);
+  const [hexColumns, setHexColumns] = useState(8);
 
   const { createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid } = useGridTemplates();
   const { uploadImageToCell } = useImageUploader();
@@ -29,7 +29,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
 
     switch (gridType) {
       case 'hexagonal':
-        return createHexagonalGrid(fabricCanvas);
+        return createHexagonalGrid(fabricCanvas, hexColumns);
       case 'square':
         return createSquareGrid(fabricCanvas);
       case 'circular':
@@ -39,7 +39,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
       default:
         return [];
     }
-  }, [fabricCanvas, createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid]);
+  }, [fabricCanvas, createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid, hexColumns]);
 
   const showGrid = useCallback(() => {
     if (!fabricCanvas || !selectedGrid) return;
@@ -93,7 +93,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
 
     toast({
       title: "Grid Created!",
-      description: `${selectedGrid} grid is ready. Click on cells to upload images.`,
+      description: `${selectedGrid} grid with ${newCells.length} cells is ready. Click on cells to upload images.`,
     });
   }, [fabricCanvas, selectedGrid, gridCells, createGrid, uploadImageToCell]);
 
@@ -155,6 +155,13 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     };
   }, []);
 
+  // Regenerate grid when hexColumns changes
+  useEffect(() => {
+    if (selectedGrid === 'hexagonal' && isGridVisible) {
+      showGrid();
+    }
+  }, [hexColumns]);
+
   return (
     <div className="space-y-6">
       {/* Grid Template Selector */}
@@ -164,6 +171,8 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
         onShowGrid={showGrid}
         onClearGrid={clearGrid}
         isGridVisible={isGridVisible}
+        hexColumns={hexColumns}
+        onHexColumnsChange={setHexColumns}
       />
 
       {/* Export Toolbar */}
@@ -172,6 +181,9 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
               Grid: {selectedGrid} • Cells: {gridCells.length}
+              {selectedGrid === 'hexagonal' && (
+                <span className="ml-2">• Columns: {hexColumns}</span>
+              )}
               {selectedCellIndex !== null && (
                 <span className="ml-2 text-primary font-medium">
                   Selected: Cell {selectedCellIndex + 1}
@@ -199,7 +211,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
             </p>
           ) : (
             <p className="text-sm text-muted-foreground text-center">
-              Click on any grid cell to upload a photo. Each cell can hold one unique image.
+              Click on any grid cell to upload a photo. Each image will be perfectly fitted to its shape.
             </p>
           )}
           
@@ -222,7 +234,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-accent rounded-full"></span>
-              <span>Drag images to reposition within cells</span>
+              <span>Images automatically fit cell shapes</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-secondary rounded-full"></span>

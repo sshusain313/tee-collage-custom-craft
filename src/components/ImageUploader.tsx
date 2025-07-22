@@ -36,16 +36,30 @@ export const useImageUploader = () => {
     onCellUpdate: (cellIndex: number, image: any) => void
   ) => {
     FabricImage.fromURL(imageUrl).then((img) => {
-      const shapeBounds = cell.shape.getBoundingRect();
+      // Create a clone of the cell shape for clipping
+      const clipShape = cell.shape.clone();
+      clipShape.set({
+        left: 0,
+        top: 0,
+        originX: 'center',
+        originY: 'center',
+      });
+
+      // Calculate proper scaling based on cell type
+      let scale: number;
       
-      // Calculate scale to fill the shape completely
-      let scale;
-      if (cell.type === 'circular' || cell.type === 'center-focus') {
-        // For circles, use the radius * 2 as the dimension
+      if (cell.type === 'hexagonal') {
+        // For hexagons, scale to fill the shape completely
+        const hexRadius = cell.size;
+        const imgDimension = Math.max(img.width!, img.height!);
+        scale = (hexRadius * 2.2) / imgDimension; // 2.2 for complete fill
+      } else if (cell.type === 'circular' || cell.type === 'center-focus') {
+        // For circles, use diameter
         const diameter = cell.size * 2;
         scale = Math.max(diameter / img.width!, diameter / img.height!) * 1.1;
       } else {
-        // For polygons and rectangles
+        // For squares and rectangles
+        const shapeBounds = cell.shape.getBoundingRect();
         scale = Math.max(shapeBounds.width / img.width!, shapeBounds.height / img.height!) * 1.1;
       }
       
@@ -55,10 +69,14 @@ export const useImageUploader = () => {
         top: cell.centerY,
         originX: 'center',
         originY: 'center',
-        clipPath: cell.shape,
+        clipPath: clipShape,
         selectable: true,
         hasControls: true,
         hasBorders: true,
+        lockMovementX: false,
+        lockMovementY: false,
+        lockScalingX: false,
+        lockScalingY: false,
       });
 
       // Remove previous image if exists
@@ -74,7 +92,7 @@ export const useImageUploader = () => {
 
       toast({
         title: "Image Added!",
-        description: `Photo added to ${cell.type} cell ${cell.index + 1}`,
+        description: `Photo perfectly fitted to ${cell.type} cell ${cell.index + 1}`,
       });
     }).catch((error) => {
       console.error('Error loading image:', error);

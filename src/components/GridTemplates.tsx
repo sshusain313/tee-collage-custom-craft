@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { Canvas as FabricCanvas, Polygon, Circle, Rect } from 'fabric';
 
@@ -15,31 +14,49 @@ export interface GridCell {
 }
 
 export const useGridTemplates = () => {
-  const createHexagonalGrid = useCallback((canvas: FabricCanvas, rows = 8, cols = 7) => {
+  const createHexagonalGrid = useCallback((canvas: FabricCanvas, columns = 8) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     
-    const hexSize = 45;
-    const startX = (canvasWidth - cols * hexSize * 1.5) / 2;
-    const startY = (canvasHeight - rows * hexSize * Math.sqrt(3)) / 2;
+    // Calculate optimal hex size based on canvas width and column count
+    const maxColumns = Math.min(columns, 16); // Cap at 16 columns
+    const hexSize = Math.min(45, (canvasWidth - 40) / (maxColumns * 1.5));
+    
+    // Calculate how many rows we can fit
+    const hexHeight = hexSize * Math.sqrt(3);
+    const maxRows = Math.floor((canvasHeight - 40) / (hexHeight * 0.75));
+    
+    const startX = (canvasWidth - (maxColumns - 1) * hexSize * 1.5) / 2;
+    const startY = (canvasHeight - maxRows * hexHeight * 0.75) / 2;
     
     const cells: GridCell[] = [];
 
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const x = startX + col * hexSize * 1.5;
-        const y = startY + row * hexSize * Math.sqrt(3) / 2 + (col % 2) * hexSize * Math.sqrt(3) / 4;
+    for (let row = 0; row < maxRows; row++) {
+      const colsInRow = row % 2 === 0 ? maxColumns : maxColumns - 1;
+      for (let col = 0; col < colsInRow; col++) {
+        const offsetX = row % 2 === 0 ? 0 : hexSize * 0.75;
+        const x = startX + col * hexSize * 1.5 + offsetX;
+        const y = startY + row * hexHeight * 0.75;
 
+        // Skip if hexagon would be outside canvas bounds
+        if (x - hexSize < 0 || x + hexSize > canvasWidth || 
+            y - hexSize < 0 || y + hexSize > canvasHeight) {
+          continue;
+        }
+
+        // Create hexagon points (flat-top orientation)
         const points = [];
         for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
+          const angle = (Math.PI / 3) * i - Math.PI / 2; // Start from top
           points.push({
-            x: x + hexSize * Math.cos(angle),
-            y: y + hexSize * Math.sin(angle)
+            x: hexSize * Math.cos(angle),
+            y: hexSize * Math.sin(angle)
           });
         }
 
         const hexagon = new Polygon(points, {
+          left: x,
+          top: y,
           fill: 'rgba(200, 200, 200, 0.1)',
           stroke: 'hsl(280, 100%, 60%)',
           strokeWidth: 1.5,
@@ -47,6 +64,8 @@ export const useGridTemplates = () => {
           hasControls: false,
           hasBorders: false,
           hoverCursor: 'pointer',
+          originX: 'center',
+          originY: 'center',
         });
 
         cells.push({ 
