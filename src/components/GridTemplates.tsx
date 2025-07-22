@@ -14,7 +14,7 @@ export interface GridCell {
 }
 
 export const useGridTemplates = () => {
-  const createHexagonalGrid = useCallback((canvas: FabricCanvas, columns = 8) => {
+  const createHexagonalGrid = useCallback((canvas: FabricCanvas, columns = 8, rows = 8) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     
@@ -24,7 +24,7 @@ export const useGridTemplates = () => {
     
     // Calculate how many rows we can fit
     const hexHeight = hexSize * Math.sqrt(3);
-    const maxRows = Math.floor((canvasHeight - 40) / (hexHeight * 0.75));
+    const maxRows = rows; // Use the passed-in value instead of calculating
     
     const startX = (canvasWidth - (maxColumns - 1) * hexSize * 1.5) / 2;
     const startY = (canvasHeight - maxRows * hexHeight * 0.75) / 2;
@@ -60,10 +60,10 @@ export const useGridTemplates = () => {
           fill: 'rgba(200, 200, 200, 0.1)',
           stroke: 'hsl(280, 100%, 60%)',
           strokeWidth: 1.5,
-          selectable: false,
-          hasControls: false,
-          hasBorders: false,
-          hoverCursor: 'pointer',
+          selectable: true,
+          hasControls: true,
+          hasBorders: true,
+          evented: true,
           originX: 'center',
           originY: 'center',
         });
@@ -83,18 +83,18 @@ export const useGridTemplates = () => {
     return cells;
   }, []);
 
-  const createSquareGrid = useCallback((canvas: FabricCanvas, gridSize = 4) => {
+  const createSquareGrid = useCallback((canvas: FabricCanvas, rows = 4, columns = 4) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     
-    const cellSize = Math.min(canvasWidth, canvasHeight) / (gridSize + 1);
-    const startX = (canvasWidth - gridSize * cellSize) / 2;
-    const startY = (canvasHeight - gridSize * cellSize) / 2;
+    const cellSize = Math.min(canvasWidth, canvasHeight) / (Math.max(rows, columns) + 1);
+    const startX = (canvasWidth - columns * cellSize) / 2;
+    const startY = (canvasHeight - rows * cellSize) / 2;
     
     const cells: GridCell[] = [];
 
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
         const x = startX + col * cellSize;
         const y = startY + row * cellSize;
 
@@ -106,10 +106,10 @@ export const useGridTemplates = () => {
           fill: 'rgba(200, 200, 200, 0.1)',
           stroke: 'hsl(280, 100%, 60%)',
           strokeWidth: 1.5,
-          selectable: false,
-          hasControls: false,
-          hasBorders: false,
-          hoverCursor: 'pointer',
+          selectable: true,
+          hasControls: true,
+          hasBorders: true,
+          evented: true,
         });
 
         cells.push({ 
@@ -149,10 +149,10 @@ export const useGridTemplates = () => {
         fill: 'rgba(200, 200, 200, 0.1)',
         stroke: 'hsl(280, 100%, 60%)',
         strokeWidth: 1.5,
-        selectable: false,
-        hasControls: false,
-        hasBorders: false,
-        hoverCursor: 'pointer',
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        evented: true,
       });
 
       cells.push({ 
@@ -169,7 +169,7 @@ export const useGridTemplates = () => {
     return cells;
   }, []);
 
-  const createCenterFocusGrid = useCallback((canvas: FabricCanvas) => {
+  const createCenterFocusGrid = useCallback((canvas: FabricCanvas, count = 8) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     const centerX = canvasWidth / 2;
@@ -185,10 +185,10 @@ export const useGridTemplates = () => {
       fill: 'rgba(200, 200, 200, 0.1)',
       stroke: 'hsl(280, 100%, 60%)',
       strokeWidth: 2,
-      selectable: false,
-      hasControls: false,
-      hasBorders: false,
-      hoverCursor: 'pointer',
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      evented: true,
     });
 
     cells.push({ 
@@ -204,8 +204,8 @@ export const useGridTemplates = () => {
     // Surrounding smaller circles
     const surroundingRadius = 120;
     const surroundingSize = 30;
-    for (let i = 0; i < 8; i++) {
-      const angle = (2 * Math.PI * i) / 8;
+    for (let i = 0; i < count; i++) {
+      const angle = (2 * Math.PI * i) / count;
       const x = centerX + surroundingRadius * Math.cos(angle);
       const y = centerY + surroundingRadius * Math.sin(angle);
 
@@ -216,10 +216,10 @@ export const useGridTemplates = () => {
         fill: 'rgba(200, 200, 200, 0.1)',
         stroke: 'hsl(280, 100%, 60%)',
         strokeWidth: 1.5,
-        selectable: false,
-        hasControls: false,
-        hasBorders: false,
-        hoverCursor: 'pointer',
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        evented: true,
       });
 
       cells.push({ 
