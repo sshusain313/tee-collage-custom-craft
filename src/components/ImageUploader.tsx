@@ -36,14 +36,53 @@ export const useImageUploader = () => {
     onCellUpdate: (cellIndex: number, image: any) => void
   ) => {
     FabricImage.fromURL(imageUrl).then((img) => {
-      // Create a clone of the cell shape for clipping
-      const clipShape = cell.shape.clone();
-      clipShape.set({
-        left: 0,
-        top: 0,
-        originX: 'center',
-        originY: 'center',
-      });
+      // Create a proper clip path based on cell type
+      let clipPath: any = null;
+
+      if (cell.type === 'hexagonal') {
+        // Create hexagon clip path
+        const points = [];
+        const hexSize = cell.size;
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          points.push({
+            x: hexSize * Math.cos(angle),
+            y: hexSize * Math.sin(angle)
+          });
+        }
+        
+        const { Polygon } = require('fabric');
+        clipPath = new Polygon(points, {
+          left: 0,
+          top: 0,
+          originX: 'center',
+          originY: 'center',
+          absolutePositioned: true
+        });
+      } else if (cell.type === 'circular' || cell.type === 'center-focus') {
+        // Create circle clip path
+        const { Circle } = require('fabric');
+        clipPath = new Circle({
+          radius: cell.size,
+          left: 0,
+          top: 0,
+          originX: 'center',
+          originY: 'center',
+          absolutePositioned: true
+        });
+      } else {
+        // Create rectangle clip path for squares
+        const { Rect } = require('fabric');
+        clipPath = new Rect({
+          width: cell.size,
+          height: cell.size,
+          left: 0,
+          top: 0,
+          originX: 'center',
+          originY: 'center',
+          absolutePositioned: true
+        });
+      }
 
       // Calculate proper scaling based on cell type
       let scale: number;
@@ -59,8 +98,7 @@ export const useImageUploader = () => {
         scale = Math.max(diameter / img.width!, diameter / img.height!) * 1.1;
       } else {
         // For squares and rectangles
-        const shapeBounds = cell.shape.getBoundingRect();
-        scale = Math.max(shapeBounds.width / img.width!, shapeBounds.height / img.height!) * 1.1;
+        scale = Math.max(cell.size / img.width!, cell.size / img.height!) * 1.1;
       }
       
       img.scale(scale);
@@ -69,7 +107,7 @@ export const useImageUploader = () => {
         top: cell.centerY,
         originX: 'center',
         originY: 'center',
-        clipPath: clipShape,
+        clipPath: clipPath,
         selectable: true,
         hasControls: true,
         hasBorders: true,
