@@ -53,7 +53,18 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     });
 
     const newCells = createGrid(selectedGrid);
-    
+    // Transfer images from previous gridCells to newCells by index
+    newCells.forEach((cell) => {
+      const prevCell = gridCells.find(c => c.index === cell.index);
+      if (prevCell && prevCell.image) {
+        cell.image = prevCell.image;
+        // Update image position to match new cell position
+        prevCell.image.set({
+          left: cell.centerX,
+          top: cell.centerY,
+        });
+      }
+    });
     // Add click handlers and add to canvas
     newCells.forEach((cell, index) => {
       cell.shape.on('mousedown', () => {
@@ -64,8 +75,10 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
           (cellIndex: number, image: any) => {
             setGridCells(prev => {
               const updated = [...prev];
-              if (updated[cellIndex]) {
-                updated[cellIndex].image = image;
+              // Find the cell by its index property, not array index
+              const targetCellIndex = updated.findIndex(c => c.index === cellIndex);
+              if (targetCellIndex !== -1) {
+                updated[targetCellIndex].image = image;
               }
               return updated;
             });
@@ -85,6 +98,13 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
       });
 
       fabricCanvas.add(cell.shape);
+      // Add image if it exists
+      if (cell.image) {
+        fabricCanvas.add(cell.image);
+        if (typeof cell.image.bringToFront === 'function') {
+          cell.image.bringToFront();
+        }
+      }
     });
 
     setGridCells(newCells);
