@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Hexagon, Grid3X3, Circle, Focus, Plus, Minus } from 'lucide-react';
 import { GridType } from './GridTemplates';
+import { DesignSidebar } from './DesignSidebar';
+import { SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from '@/components/ui/sidebar';
+import { Upload, Star } from 'lucide-react';  
 
 interface GridSelectorProps {
   selectedGrid: GridType | null;
@@ -46,7 +49,6 @@ export const GridSelector = ({
   const gridTemplates = [
     { type: 'hexagonal' as GridType, label: 'Hexagonal', icon: Hexagon },
     { type: 'square' as GridType, label: 'Square Grid', icon: Grid3X3 },
-    { type: 'circular' as GridType, label: 'Circular', icon: Circle },
     { type: 'center-focus' as GridType, label: 'Center Focus', icon: Focus },
   ];
 
@@ -101,9 +103,9 @@ export const GridSelector = ({
   return (
     <Card className="p-4 bg-gradient-card">
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-foreground">Choose Grid Template</h3>
+        {/* <h3 className="text-sm font-medium text-foreground">Choose Grid Template</h3> */}
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="flex flex-col gap-2">
           {gridTemplates.map(({ type, label, icon: Icon }) => (
             <Button
               key={type}
@@ -216,33 +218,6 @@ export const GridSelector = ({
             </Button>
           </div>
         )}
-        {/* Circular Grid Count Control */}
-        {selectedGrid === 'circular' && (
-          <div className="flex items-center justify-center gap-2 p-2 bg-muted/50 rounded-lg">
-            <span className="text-xs text-muted-foreground">Circles:</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => handleCircleCountChange(false)}
-              disabled={circleCount <= 1}
-            >
-              <Minus className="w-3 h-3" />
-            </Button>
-            <span className="text-sm font-medium min-w-[20px] text-center">
-              {circleCount}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => handleCircleCountChange(true)}
-              disabled={circleCount >= 32}
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
-          </div>
-        )}
         {/* Center Focus Grid Count Control */}
         {selectedGrid === 'center-focus' && (
           <div className="flex items-center justify-center gap-2 p-2 bg-muted/50 rounded-lg">
@@ -290,6 +265,22 @@ export const GridSelector = ({
             </Button>
           )}
         </div>
+
+        <SidebarGroup>
+              <SidebarGroupLabel className="text-purple-700 font-semibold">Quick Actions</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="space-y-2">
+                  <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white h-10">
+                    <Upload className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">Upload Photos</span>
+                  </Button>
+                  <Button variant="outline" className="w-full h-10 border-purple-300 text-purple-700 hover:bg-purple-50">
+                    <Star className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">My Favorites</span>
+                  </Button>
+                </div>
+              </SidebarGroupContent>
+          </SidebarGroup>
       </div>
     </Card>
   );

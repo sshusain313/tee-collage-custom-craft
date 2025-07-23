@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Canvas as FabricCanvas, Polygon, Circle, Rect } from 'fabric';
 
-export type GridType = 'hexagonal' | 'square' | 'circular' | 'center-focus';
+export type GridType = 'hexagonal' | 'square' | 'center-focus';
 
 export interface GridCell {
   shape: any;
@@ -14,76 +14,80 @@ export interface GridCell {
 }
 
 export const useGridTemplates = () => {
-  const createHexagonalGrid = useCallback((canvas: FabricCanvas, columns = 8, rows = 8) => {
+  const createHexagonalGrid = useCallback((canvas: FabricCanvas) => {
+    // 1 large center hexagon, 6 smaller hexagons tightly surrounding it (total 7)
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
-    
-    // Calculate optimal hex size based on canvas width and column count
-    const maxColumns = Math.min(columns, 16); // Cap at 16 columns
-    const hexSize = Math.min(45, (canvasWidth - 40) / (maxColumns * 1.5));
-    
-    // Calculate how many rows we can fit
-    const hexHeight = hexSize * Math.sqrt(3);
-    const maxRows = rows; // Use the passed-in value instead of calculating
-    
-    const startX = (canvasWidth - (maxColumns - 1) * hexSize * 1.5) / 2;
-    const startY = (canvasHeight - maxRows * hexHeight * 0.75) / 2;
-    
+    // Large center hex size
+    const largeHexSize = Math.min(canvasWidth, canvasHeight) / 4.5;
+    // Small hex size (for ring)
+    const smallHexSize = largeHexSize / 2;
+    const gap = 2; // Minimal gap between hexagons
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
     const cells: GridCell[] = [];
 
-    for (let row = 0; row < maxRows; row++) {
-      const colsInRow = row % 2 === 0 ? maxColumns : maxColumns - 1;
-      for (let col = 0; col < colsInRow; col++) {
-        const offsetX = row % 2 === 0 ? 0 : hexSize * 0.75;
-        const x = startX + col * hexSize * 1.5 + offsetX;
-        const y = startY + row * hexHeight * 0.75;
-
-        // Skip if hexagon would be outside canvas bounds
-        if (x - hexSize < 0 || x + hexSize > canvasWidth || 
-            y - hexSize < 0 || y + hexSize > canvasHeight) {
-          continue;
-        }
-
-        // Create hexagon points (flat-top orientation)
-        const points = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i - Math.PI / 2; // Start from top
-          points.push({
-            x: hexSize * Math.cos(angle),
-            y: hexSize * Math.sin(angle)
-          });
-        }
-
-        const hexagon = new Polygon(points, {
-          left: x,
-          top: y,
-          fill: 'rgba(200, 200, 200, 0.1)',
-          stroke: 'hsl(280, 100%, 60%)',
-          strokeWidth: 1.5,
-          selectable: true,
-          hasControls: true,
-          hasBorders: true,
-          evented: true,
-          originX: 'center',
-          originY: 'center',
-        });
-
-        cells.push({ 
-          shape: hexagon,
-          image: null, 
-          index: cells.length,
-          centerX: x,
-          centerY: y,
-          size: hexSize,
-          type: 'hexagonal'
+    // Helper to create a hexagon at (cx, cy) with given size
+    function makeHex(cx: number, cy: number, size: number) {
+      const points = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        points.push({
+          x: size * Math.cos(angle),
+          y: size * Math.sin(angle)
         });
       }
+      return new Polygon(points, {
+        left: cx,
+        top: cy,
+        fill: 'rgba(200, 200, 200, 0.1)',
+        stroke: 'hsl(280, 100%, 60%)',
+        strokeWidth: 1.5,
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        evented: true,
+        originX: 'center',
+        originY: 'center',
+      });
+    }
+
+    // Center large hexagon
+    cells.push({
+      shape: makeHex(centerX, centerY, largeHexSize),
+      image: null,
+      index: 0,
+      centerX: centerX,
+      centerY: centerY,
+      size: largeHexSize,
+      type: 'hexagonal'
+    });
+
+    // 6 surrounding small hexagons
+    for (let i = 0; i < 6; i++) {
+      const angle = Math.PI / 3 * i;
+      // Distance from center: largeHexSize + smallHexSize + gap
+      const dist = largeHexSize + smallHexSize + gap;
+      const cx = centerX + dist * Math.cos(angle);
+      const cy = centerY + dist * Math.sin(angle);
+      cells.push({
+        shape: makeHex(cx, cy, smallHexSize),
+        image: null,
+        index: i + 1,
+        centerX: cx,
+        centerY: cy,
+        size: smallHexSize,
+        type: 'hexagonal'
+      });
     }
 
     return cells;
   }, []);
 
-  const createSquareGrid = useCallback((canvas: FabricCanvas, rows = 4, columns = 4) => {
+  const createSquareGrid = useCallback((canvas: FabricCanvas) => {
+    // Only support 4x4 for this special layout
+    const rows = 4;
+    const columns = 4;
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     
@@ -93,8 +97,11 @@ export const useGridTemplates = () => {
     
     const cells: GridCell[] = [];
 
+    // Outer cells (skip center 2x2 block)
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
+        // Skip the center 2x2 block (rows 1,2 and cols 1,2)
+        if (row >= 1 && row <= 2 && col >= 1 && col <= 2) continue;
         const x = startX + col * cellSize;
         const y = startY + row * cellSize;
 
@@ -124,47 +131,31 @@ export const useGridTemplates = () => {
       }
     }
 
-    return cells;
-  }, []);
-
-  const createCircularGrid = useCallback((canvas: FabricCanvas, count = 12) => {
-    const canvasWidth = canvas.width!;
-    const canvasHeight = canvas.height!;
-    const centerX = canvasWidth / 2;
-    const centerY = canvasHeight / 2;
-    const radius = Math.min(canvasWidth, canvasHeight) * 0.3;
-    const circleSize = 35;
-    
-    const cells: GridCell[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const angle = (2 * Math.PI * i) / count;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-
-      const circle = new Circle({
-        left: x - circleSize,
-        top: y - circleSize,
-        radius: circleSize,
-        fill: 'rgba(200, 200, 200, 0.1)',
-        stroke: 'hsl(280, 100%, 60%)',
-        strokeWidth: 1.5,
-        selectable: true,
-        hasControls: true,
-        hasBorders: true,
-        evented: true,
-      });
-
-      cells.push({ 
-        shape: circle,
-        image: null, 
-        index: cells.length,
-        centerX: x,
-        centerY: y,
-        size: circleSize,
-        type: 'circular'
-      });
-    }
+    // Add one large center cell (covering the center 2x2 block)
+    const centerX = startX + cellSize * 2.0;
+    const centerY = startY + cellSize * 2.0;
+    const centerSquare = new Rect({
+      left: centerX - cellSize,
+      top: centerY - cellSize,
+      width: cellSize * 2 * 0.9,
+      height: cellSize * 2 * 0.9,
+      fill: 'rgba(200, 200, 200, 0.1)',
+      stroke: 'hsl(280, 100%, 60%)',
+      strokeWidth: 2,
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      evented: true,
+    });
+    cells.push({
+      shape: centerSquare,
+      image: null,
+      index: cells.length,
+      centerX: centerX,
+      centerY: centerY,
+      size: cellSize * 2 * 0.9,
+      type: 'square'
+    });
 
     return cells;
   }, []);
@@ -239,7 +230,6 @@ export const useGridTemplates = () => {
   return {
     createHexagonalGrid,
     createSquareGrid,
-    createCircularGrid,
     createCenterFocusGrid
   };
 };

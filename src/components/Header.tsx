@@ -18,16 +18,16 @@ export const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-foreground hover:text-primary transition-colors">
+            <a href="/" className="text-foreground hover:text-primary transition-colors">
+              Home
+            </a>
+            <a href="/create-collage" className="text-foreground hover:text-primary transition-colors">
               Create
             </a>
-            <a href="#" className="text-foreground hover:text-primary transition-colors">
+            <a href="/gallery" className="text-foreground hover:text-primary transition-colors">
               Gallery
             </a>
-            <a href="#" className="text-foreground hover:text-primary transition-colors">
-              Shop
-            </a>
-            <a href="#" className="text-foreground hover:text-primary transition-colors">
+            <a href="/about" className="text-foreground hover:text-primary transition-colors">
               About
             </a>
           </nav>

@@ -8,6 +8,8 @@ import { GridSelector } from './GridSelector';
 import { useGridTemplates, GridType, GridCell } from './GridTemplates';
 import { useImageUploader } from './ImageUploader';
 import { Polygon, Circle, Rect } from 'fabric';
+import Layout from './Layout';
+import { DesignSidebar } from './DesignSidebar';
 
 interface CollageCanvasProps {
   tshirtImage?: string;
@@ -38,7 +40,7 @@ export function fitImageToCell(img: any, cell: GridCell) {
       originY: 'center',
       absolutePositioned: true
     });
-  } else if (cell.type === 'circular' || cell.type === 'center-focus') {
+  } else if (cell.type === 'center-focus') {
     clipPath = new Circle({
       radius: cellWidth / 2,
       left: cellCenter.x,
@@ -66,7 +68,7 @@ export function fitImageToCell(img: any, cell: GridCell) {
       (cellWidth * 1.2) / img.width,
       (cellHeight * 1.2) / img.height
     );
-  } else if (cell.type === 'circular' || cell.type === 'center-focus') {
+  } else if (cell.type === 'center-focus') {
     scale = Math.max(
       cellWidth / img.width,
       cellHeight / img.height
@@ -108,6 +110,13 @@ export function fitImageToCell(img: any, cell: GridCell) {
 
 type Mode = 'upload' | 'adjust';
 
+interface ContextMenu {
+  visible: boolean;
+  x: number;
+  y: number;
+  cellIndex: number;
+}
+
 export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
@@ -122,8 +131,14 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   const [circleCount, setCircleCount] = useState(12);
   const [focusCount, setFocusCount] = useState(8);
   const [mode, setMode] = useState<Mode>('upload');
+  const [contextMenu, setContextMenu] = useState<ContextMenu>({
+    visible: false,
+    x: 0,
+    y: 0,
+    cellIndex: -1
+  });
 
-  const { createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid } = useGridTemplates();
+  const { createHexagonalGrid, createSquareGrid, createCenterFocusGrid } = useGridTemplates();
   const { uploadImageToCell } = useImageUploader();
 
   const createGrid = useCallback((gridType: GridType) => {
@@ -131,17 +146,109 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
 
     switch (gridType) {
       case 'hexagonal':
-        return createHexagonalGrid(fabricCanvas, hexColumns, hexRows);
+        return createHexagonalGrid(fabricCanvas);
       case 'square':
-        return createSquareGrid(fabricCanvas, squareRows, squareColumns);
-      case 'circular':
-        return createCircularGrid(fabricCanvas, circleCount);
+        return createSquareGrid(fabricCanvas);
       case 'center-focus':
         return createCenterFocusGrid(fabricCanvas, focusCount);
       default:
         return [];
     }
-  }, [fabricCanvas, createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid, hexColumns, hexRows, squareRows, squareColumns, circleCount, focusCount]);
+  }, [fabricCanvas, createHexagonalGrid, createSquareGrid, createCenterFocusGrid, focusCount]);
+
+  // Helper to create a new cell based on existing cell
+  const createCellFromTemplate = useCallback((templateCell: GridCell, offsetX: number = 0, offsetY: number = 0) => {
+    const newShape = templateCell.shape.clone();
+    newShape.set({
+      left: templateCell.shape.left! + offsetX,
+      top: templateCell.shape.top! + offsetY,
+    });
+
+    return {
+      shape: newShape,
+      image: templateCell.image ? templateCell.image.clone() : null,
+      index: gridCells.length,
+      centerX: templateCell.centerX + offsetX,
+      centerY: templateCell.centerY + offsetY,
+      size: templateCell.size,
+      type: templateCell.type
+    };
+  }, [gridCells.length]);
+
+  // Add new cell
+  const addCell = useCallback((cellIndex: number) => {
+    if (cellIndex < 0 || cellIndex >= gridCells.length) return;
+    
+    const templateCell = gridCells[cellIndex];
+    const offset = 50; // Offset for new cell
+    const newCell = createCellFromTemplate(templateCell, offset, offset);
+    
+    setGridCells(prev => [...prev, newCell]);
+    
+    if (fabricCanvas) {
+      fabricCanvas.add(newCell.shape);
+      if (newCell.image) {
+        fitImageToCell(newCell.image, newCell);
+        fabricCanvas.add(newCell.image);
+      }
+      fabricCanvas.renderAll();
+    }
+
+    toast({
+      title: "Cell Added!",
+      description: "A new cell has been added to your grid.",
+    });
+  }, [gridCells, createCellFromTemplate, fabricCanvas]);
+
+  // Duplicate cell
+  const duplicateCell = useCallback((cellIndex: number) => {
+    if (cellIndex < 0 || cellIndex >= gridCells.length) return;
+    
+    const templateCell = gridCells[cellIndex];
+    const offset = 30; // Smaller offset for duplicate
+    const newCell = createCellFromTemplate(templateCell, offset, offset);
+    
+    setGridCells(prev => [...prev, newCell]);
+    
+    if (fabricCanvas) {
+      fabricCanvas.add(newCell.shape);
+      if (newCell.image) {
+        fitImageToCell(newCell.image, newCell);
+        fabricCanvas.add(newCell.image);
+      }
+      fabricCanvas.renderAll();
+    }
+
+    toast({
+      title: "Cell Duplicated!",
+      description: "The cell has been duplicated.",
+    });
+  }, [gridCells, createCellFromTemplate, fabricCanvas]);
+
+  // Delete cell
+  const deleteCell = useCallback((cellIndex: number) => {
+    if (cellIndex < 0 || cellIndex >= gridCells.length) return;
+    
+    const cellToDelete = gridCells[cellIndex];
+    
+    if (fabricCanvas) {
+      fabricCanvas.remove(cellToDelete.shape);
+      if (cellToDelete.image) {
+        fabricCanvas.remove(cellToDelete.image);
+      }
+    }
+    
+    setGridCells(prev => prev.filter((_, index) => index !== cellIndex));
+    
+    if (fabricCanvas) {
+      fabricCanvas.renderAll();
+    }
+
+    toast({
+      title: "Cell Deleted!",
+      description: "The cell has been removed from your grid.",
+    });
+  }, [gridCells, fabricCanvas]);
 
   // Helper to update cell interactivity/event listeners based on mode
   const updateCellInteractivity = useCallback((cells: GridCell[], currentMode: Mode) => {
@@ -152,6 +259,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
         cell.shape.off('moving');
         cell.shape.off('scaling');
         cell.shape.off('modified');
+        cell.shape.off('rightclick');
       }
 
       // Setup event listeners and properties based on mode
@@ -184,6 +292,20 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
           cell.shape.on('scaling', updateImagePosition);
           cell.shape.on('modified', updateImagePosition);
         }
+
+        // Add right-click context menu
+        cell.shape.on('mousedown', (e: any) => {
+          if (e.e.button === 2) { // Right click
+            e.e.preventDefault();
+            const pointer = fabricCanvas!.getPointer(e.e);
+            setContextMenu({
+              visible: true,
+              x: pointer.x,
+              y: pointer.y,
+              cellIndex: index
+            });
+          }
+        });
       };
 
       const setupUploadMode = () => {
@@ -246,29 +368,39 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     if (!fabricCanvas || !selectedGrid) return;
     // Generate new gridCells for the selected grid type/params
     const newCells = createGrid(selectedGrid);
-    // Transfer images and preserve geometry if possible
-    newCells.forEach((cell) => {
-      const prevCell = gridCells.find(c => c.index === cell.index);
-      if (prevCell) {
-        // If the user has moved/resized, preserve those values
-        cell.shape.set({
-          left: prevCell.shape.left,
-          top: prevCell.shape.top,
-          scaleX: prevCell.shape.scaleX,
-          scaleY: prevCell.shape.scaleY,
-          width: prevCell.shape.width,
-          height: prevCell.shape.height,
-        });
-        cell.centerX = prevCell.centerX;
-        cell.centerY = prevCell.centerY;
-        cell.size = prevCell.size;
-        cell.image = prevCell.image;
-      }
-    });
+    
+    // Only preserve cell data if we're staying within the same template type
+    // and only adjusting parameters (not switching between different templates)
+    const prevGridType = gridCells.length > 0 ? gridCells[0].type : null;
+    const isSameTemplateType = prevGridType === selectedGrid;
+    
+    if (isSameTemplateType) {
+      // Transfer images and preserve geometry for the same template type
+      newCells.forEach((cell) => {
+        const prevCell = gridCells.find(c => c.index === cell.index);
+        if (prevCell) {
+          // If the user has moved/resized, preserve those values
+          cell.shape.set({
+            left: prevCell.shape.left,
+            top: prevCell.shape.top,
+            scaleX: prevCell.shape.scaleX,
+            scaleY: prevCell.shape.scaleY,
+            width: prevCell.shape.width,
+            height: prevCell.shape.height,
+          });
+          cell.centerX = prevCell.centerX;
+          cell.centerY = prevCell.centerY;
+          cell.size = prevCell.size;
+          cell.image = prevCell.image;
+        }
+      });
+    }
+    // If switching to a different template type, use the new cells as-is (default positions)
+    
     setGridCells(newCells);
     setIsGridVisible(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fabricCanvas, selectedGrid, hexColumns, hexRows, squareRows, squareColumns, circleCount, focusCount]);
+  }, [fabricCanvas, selectedGrid, hexColumns, hexRows, squareRows, squareColumns, focusCount]);
 
   // On mode switch or gridCells change, update interactivity/event listeners and re-render
   useEffect(() => {
@@ -284,6 +416,21 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     });
     fabricCanvas.renderAll();
   }, [mode, gridCells, fabricCanvas, isGridVisible, updateCellInteractivity]);
+
+  // Handle canvas right-click to close context menu
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    
+    const handleCanvasClick = () => {
+      setContextMenu(prev => ({ ...prev, visible: false }));
+    };
+    
+    fabricCanvas.on('mouse:down', handleCanvasClick);
+    
+    return () => {
+      fabricCanvas.off('mouse:down', handleCanvasClick);
+    };
+  }, [fabricCanvas]);
 
   const clearGrid = useCallback(() => {
     if (!fabricCanvas) return;
@@ -326,13 +473,28 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     });
   }, [fabricCanvas]);
 
+  // Handler to select grid and reset parameters to defaults for each template
+  const handleGridSelect = useCallback((gridType: GridType) => {
+    setSelectedGrid(gridType);
+    // Reset only the relevant parameters for each template to their defaults
+    if (gridType === 'hexagonal') {
+      // Hexagonal grid uses a fixed pattern (1 center + 6 surrounding), so no parameters to reset
+      // But if you want to make it configurable, you could reset hexColumns and hexRows here
+    } else if (gridType === 'square') {
+      setSquareRows(4);
+      setSquareColumns(4);
+    } else if (gridType === 'center-focus') {
+      setFocusCount(8);
+    }
+  }, []);
+
   // Initialize canvas
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: 600,
-      height: 600,
+      width: 700,
+      height: 700,
       backgroundColor: '#ffffff',
       selection: false,
     });
@@ -345,11 +507,10 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Mode Toggle Button */}
-      
+    <Layout>
+      <div className='flex flex-row gap-4 w-full'>
       {/* Grid Template Selector */}
-      <GridSelector
+      {/* <GridSelector
         selectedGrid={selectedGrid}
         onGridSelect={setSelectedGrid}
         onShowGrid={() => {
@@ -370,10 +531,34 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
         onSquareColumnsChange={setSquareColumns}
         onCircleCountChange={setCircleCount}
         onFocusCountChange={setFocusCount}
-      />
+      /> */}
+        <div className='w-1/4'>
+        <DesignSidebar
+          selectedGrid={selectedGrid}
+          onGridSelect={handleGridSelect}
+          onShowGrid={() => {}}
+          onClearGrid={clearGrid}
+          isGridVisible={isGridVisible}
+          hexColumns={hexColumns}
+          hexRows={hexRows}
+          squareRows={squareRows}
+          squareColumns={squareColumns}
+          focusCount={focusCount}
+          onHexColumnsChange={setHexColumns}
+          onHexRowsChange={setHexRows}
+          onSquareRowsChange={setSquareRows}
+          onSquareColumnsChange={setSquareColumns}
+          onFocusCountChange={setFocusCount}
+        />
+        </div>
+
+    <div className="w-3/4">
+      {/* Mode Toggle Button */}
+      
+      
 
       {/* Export Toolbar */}
-      {isGridVisible && (
+      {/* {isGridVisible && (
         <Card className="p-4 bg-gradient-card">
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
@@ -393,20 +578,12 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
             </Button>
           </div>
         </Card>
-      )}
+      )} */}
 
       {/* Canvas Container */}
       <Card className="p-6 bg-gradient-card shadow-elegant">
         <div className="flex flex-col items-center space-y-4">
-          <div className='flex w-full justify-end'>
-          {/* <h3 className="text-lg font-semibold text-foreground">
-            Create Your Photo Collage
-          </h3> */}
-        <div className='flex justify-end gap-20'>
-        <h3 className='text-2xl flex-start font-semibold text-foreground mr-20'>
-          Create Your Photo Collage
-        </h3>
-        <div className='flex gap-2'>
+        <div className='flex justify-end gap-2 w-full'>
         <Button
           variant={mode === 'upload' ? 'default' : 'outline'}
           size="sm"
@@ -423,8 +600,11 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
           Grid Adjustment Mode
         </Button>
         </div>
+        <div className='flex w-full justify-center'> 
+        <h3 className='text-2xl flex-start font-semibold text-foreground mr-25'>
+          Create Your Photo Collage
+        </h3> 
         </div>
-          </div>
           
           {!isGridVisible ? (
             <p className="text-sm text-muted-foreground text-center">
@@ -436,17 +616,58 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
             </p>
           )}
           
-          <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50">
+          <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50 relative">
             <canvas 
               ref={canvasRef} 
               className="border border-border rounded-lg shadow-sm"
             />
+            
+            {/* Context Menu */}
+            {contextMenu.visible && mode === 'adjust' && (
+              <div 
+                className="absolute bg-background border border-border rounded-lg shadow-lg z-50 min-w-[150px]"
+                style={{ 
+                  left: contextMenu.x, 
+                  top: contextMenu.y 
+                }}
+              >
+                <div className="p-1">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
+                    onClick={() => {
+                      addCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    Add Cell
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
+                    onClick={() => {
+                      duplicateCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    Duplicate Cell
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm text-destructive"
+                    onClick={() => {
+                      deleteCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    Delete Cell
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Card>
 
       {/* Instructions */}
-      {isGridVisible && (
+      {/* {isGridVisible && (
         <Card className="p-4 bg-muted/50">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center gap-2">
@@ -463,7 +684,9 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
             </div>
           </div>
         </Card>
-      )}
+      )} */}
     </div>
+    </div>
+    </Layout>
   );
 };

@@ -2,10 +2,13 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Heart, Users, Share2 } from 'lucide-react';
+import Layout from '@/components/Layout';
+import { Link } from 'react-router-dom';
 
 export const HeroSection = () => {
   return (
-    <section className="py-16 bg-gradient-hero relative overflow-hidden">
+    <Layout>
+    <section className="py-16 bg-gradient-hero relative overflow-hidden w-full">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
@@ -35,8 +38,10 @@ export const HeroSection = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button variant="hero" size="lg" className="text-lg px-8">
+              <Link to="/create-collage">
               <Users className="w-5 h-5 mr-2" />
               Start My Project
+              </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20">
               <Share2 className="w-5 h-5 mr-2" />
@@ -101,5 +106,6 @@ export const HeroSection = () => {
         </div>
       </div>
     </section>
+    </Layout>
   );
 };
