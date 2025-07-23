@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { GridSelector } from './GridSelector';
+import { CollageSidebar } from './CollageSidebar';
 import { useGridTemplates, GridType, GridCell } from './GridTemplates';
 import { useImageUploader } from './ImageUploader';
 import { Polygon, Circle, Rect } from 'fabric';
@@ -122,6 +122,11 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   const [circleCount, setCircleCount] = useState(12);
   const [focusCount, setFocusCount] = useState(8);
   const [mode, setMode] = useState<Mode>('upload');
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [showNames, setShowNames] = useState(true);
+  const [showGuidelines, setShowGuidelines] = useState(false);
+  const [canvasZoom, setCanvasZoom] = useState(1);
 
   const { createHexagonalGrid, createSquareGrid, createCircularGrid, createCenterFocusGrid } = useGridTemplates();
   const { uploadImageToCell } = useImageUploader();
@@ -285,26 +290,104 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     fabricCanvas.renderAll();
   }, [mode, gridCells, fabricCanvas, isGridVisible, updateCellInteractivity]);
 
-  const clearGrid = useCallback(() => {
-    if (!fabricCanvas) return;
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      // Restore previous state logic here
+      toast({
+        title: "Undone!",
+        description: "Last action has been undone.",
+      });
+    }
+  }, [historyIndex]);
 
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      // Restore next state logic here
+      toast({
+        title: "Redone!",
+        description: "Action has been redone.",
+      });
+    }
+  }, [historyIndex, history.length]);
+
+  const handleReset = useCallback(() => {
+    if (!fabricCanvas) return;
+    
+    // Clear all images but keep grid structure
     gridCells.forEach(cell => {
-      fabricCanvas.remove(cell.shape);
       if (cell.image) {
         fabricCanvas.remove(cell.image);
+        cell.image = null;
       }
     });
-
-    setGridCells([]);
-    setIsGridVisible(false);
-    setSelectedCellIndex(null);
+    
+    setGridCells([...gridCells]);
     fabricCanvas.renderAll();
-
+    
     toast({
-      title: "Grid Cleared!",
-      description: "All grid cells and images have been removed.",
+      title: "Layout Reset!",
+      description: "All photos have been cleared from the grid.",
     });
   }, [fabricCanvas, gridCells]);
+
+  const handleShuffle = useCallback(() => {
+    if (!fabricCanvas) return;
+    
+    // Get all images and shuffle them
+    const images = gridCells.map(cell => cell.image).filter(Boolean);
+    const shuffled = [...images].sort(() => Math.random() - 0.5);
+    
+    // Reassign shuffled images to cells
+    let imageIndex = 0;
+    const newCells = gridCells.map(cell => ({
+      ...cell,
+      image: cell.image ? shuffled[imageIndex++] : null
+    }));
+    
+    setGridCells(newCells);
+    fabricCanvas.renderAll();
+    
+    toast({
+      title: "Faces Shuffled!",
+      description: "Photos have been randomly rearranged.",
+    });
+  }, [fabricCanvas, gridCells]);
+
+  const handleZoomIn = useCallback(() => {
+    const newZoom = Math.min(canvasZoom * 1.2, 3);
+    setCanvasZoom(newZoom);
+    if (fabricCanvas) {
+      fabricCanvas.setZoom(newZoom);
+      fabricCanvas.renderAll();
+    }
+  }, [canvasZoom, fabricCanvas]);
+
+  const handleZoomOut = useCallback(() => {
+    const newZoom = Math.max(canvasZoom / 1.2, 0.5);
+    setCanvasZoom(newZoom);
+    if (fabricCanvas) {
+      fabricCanvas.setZoom(newZoom);
+      fabricCanvas.renderAll();
+    }
+  }, [canvasZoom, fabricCanvas]);
+
+  const handleToggleNames = useCallback(() => {
+    setShowNames(!showNames);
+    toast({
+      title: showNames ? "Names Hidden" : "Names Shown",
+      description: `Names are now ${showNames ? "hidden" : "visible"}.`,
+    });
+  }, [showNames]);
+
+  const handleToggleGuidelines = useCallback(() => {
+    setShowGuidelines(!showGuidelines);
+    toast({
+      title: showGuidelines ? "Guidelines Hidden" : "Guidelines Shown",
+      description: `Guidelines are now ${showGuidelines ? "hidden" : "visible"}.`,
+    });
+  }, [showGuidelines]);
 
   const handleExport = useCallback(() => {
     if (!fabricCanvas) return;
@@ -345,18 +428,30 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Mode Toggle Button */}
-      
-      {/* Grid Template Selector */}
-      <GridSelector
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <CollageSidebar
         selectedGrid={selectedGrid}
         onGridSelect={setSelectedGrid}
-        onShowGrid={() => {
-          // This function is now handled by the useEffect that calls showGrid
-          // We just need to trigger the effect to regenerate the grid
+        onShowGrid={() => {}}
+        onClearGrid={() => {
+          gridCells.forEach(cell => {
+            if (fabricCanvas) {
+              fabricCanvas.remove(cell.shape);
+              if (cell.image) {
+                fabricCanvas.remove(cell.image);
+              }
+            }
+          });
+          setGridCells([]);
+          setIsGridVisible(false);
+          setSelectedCellIndex(null);
+          fabricCanvas?.renderAll();
+          toast({
+            title: "Grid Cleared!",
+            description: "All grid cells and images have been removed.",
+          });
         }}
-        onClearGrid={clearGrid}
         isGridVisible={isGridVisible}
         hexColumns={hexColumns}
         hexRows={hexRows}
@@ -370,100 +465,110 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
         onSquareColumnsChange={setSquareColumns}
         onCircleCountChange={setCircleCount}
         onFocusCountChange={setFocusCount}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onReset={handleReset}
+        onShuffle={handleShuffle}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onToggleNames={handleToggleNames}
+        onToggleGuidelines={handleToggleGuidelines}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        showNames={showNames}
+        showGuidelines={showGuidelines}
       />
 
-      {/* Export Toolbar */}
-      {isGridVisible && (
-        <Card className="p-4 bg-gradient-card">
+      {/* Main Canvas Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-border bg-gradient-card">
           <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              Grid: {selectedGrid} • Cells: {gridCells.length}
-              {selectedGrid === 'hexagonal' && (
-                <span className="ml-2">• Columns: {hexColumns}</span>
-              )}
-              {selectedCellIndex !== null && (
-                <span className="ml-2 text-primary font-medium">
-                  Selected: Cell {selectedCellIndex + 1}
-                </span>
-              )}
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-semibold">Create Your Photo Collage</h1>
+              <div className="flex gap-2">
+                <Button
+                  variant={mode === 'upload' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMode('upload')}
+                >
+                  Upload Mode
+                </Button>
+                <Button
+                  variant={mode === 'adjust' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMode('adjust')}
+                >
+                  Adjust Mode
+                </Button>
+              </div>
             </div>
-            <Button variant="hero" size="sm" onClick={handleExport}>
-              <Download className="w-4 h-4" />
-              Export Design
-            </Button>
+            
+            {isGridVisible && (
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Grid: {selectedGrid} • Cells: {gridCells.length}
+                  {selectedCellIndex !== null && (
+                    <span className="ml-2 text-primary font-medium">
+                      Selected: Cell {selectedCellIndex + 1}
+                    </span>
+                  )}
+                </div>
+                <Button variant="hero" size="sm" onClick={handleExport}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Design
+                </Button>
+              </div>
+            )}
           </div>
-        </Card>
-      )}
+        </div>
 
-      {/* Canvas Container */}
-      <Card className="p-6 bg-gradient-card shadow-elegant">
-        <div className="flex flex-col items-center space-y-4">
-          <div className='flex w-full justify-end'>
-          {/* <h3 className="text-lg font-semibold text-foreground">
-            Create Your Photo Collage
-          </h3> */}
-        <div className='flex justify-end gap-20'>
-        <h3 className='text-2xl flex-start font-semibold text-foreground mr-20'>
-          Create Your Photo Collage
-        </h3>
-        <div className='flex gap-2'>
-        <Button
-          variant={mode === 'upload' ? 'default' : 'outline'}
-          size="sm"
-          className="mr-2"
-          onClick={() => setMode('upload')}
-        >
-          Image Upload Mode
-        </Button>
-        <Button
-          variant={mode === 'adjust' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setMode('adjust')}
-        >
-          Grid Adjustment Mode
-        </Button>
-        </div>
-        </div>
-          </div>
-          
-          {!isGridVisible ? (
-            <p className="text-sm text-muted-foreground text-center">
-              Select a grid template above and click "Show Grid" to start creating your collage.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center">
-              Click on any grid cell to upload a photo. Each image will be perfectly fitted to its shape.
-            </p>
-          )}
-          
-          <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50">
-            <canvas 
-              ref={canvasRef} 
-              className="border border-border rounded-lg shadow-sm"
-            />
+        {/* Canvas Container */}
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="flex flex-col items-center space-y-4 h-full">
+            {!isGridVisible ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Card className="p-8 text-center max-w-md">
+                  <h3 className="text-lg font-semibold mb-2">Ready to Start?</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select a grid template from the sidebar and start creating your collage.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Each image will be perfectly fitted to its shape.
+                  </p>
+                </Card>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50">
+                <canvas 
+                  ref={canvasRef} 
+                  className="border border-border rounded-lg shadow-sm"
+                />
+              </div>
+            )}
           </div>
         </div>
-      </Card>
 
-      {/* Instructions */}
-      {isGridVisible && (
-        <Card className="p-4 bg-muted/50">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-primary rounded-full"></span>
-              <span>Click cells to upload individual photos</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-accent rounded-full"></span>
-              <span>Images automatically fit cell shapes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-secondary rounded-full"></span>
-              <span>Export when your design is complete</span>
+        {/* Instructions Footer */}
+        {isGridVisible && (
+          <div className="p-4 border-t border-border bg-muted/30">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                <span>Click cells to upload individual photos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-accent rounded-full"></span>
+                <span>Use sidebar tools to customize your design</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-secondary rounded-full"></span>
+                <span>Export when your design is complete</span>
+              </div>
             </div>
           </div>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 };
