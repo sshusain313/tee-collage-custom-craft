@@ -1,6 +1,7 @@
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Shirt, Camera } from 'lucide-react';
+import { Heart, Users, Share2 } from 'lucide-react';
 
 export const HeroSection = () => {
   return (
@@ -14,59 +15,88 @@ export const HeroSection = () => {
         <div className="text-center max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
             <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">Create • Customize • Print</span>
+              <Heart className="w-4 h-4" />
+              <span className="text-sm font-medium">Together • Forever • Wearable</span>
             </div>
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Turn Your Photos Into
+            Your Last Chapter Together,
             <span className="block bg-gradient-to-r from-yellow-300 to-pink-300 bg-clip-text text-transparent">
-              Stunning T-Shirt Art
+              Worn Close to the Heart
             </span>
           </h1>
 
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Create beautiful hexagonal photo collages and get them printed on premium quality t-shirts. 
-            Upload your memories, design your masterpiece, and wear your story.
+          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+            Create beautiful collaborative photo collages with your team, classmates, or colleagues. 
+            One shared link brings everyone together for a farewell gift that captures every smile, 
+            every memory, and every face that made the journey special.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button variant="hero" size="lg" className="text-lg px-8">
-              <Camera className="w-5 h-5 mr-2" />
-              Start Creating
+              <Users className="w-5 h-5 mr-2" />
+              Start My Project
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20">
-              <Shirt className="w-5 h-5 mr-2" />
-              Shop Designs
+              <Share2 className="w-5 h-5 mr-2" />
+              See How It Works
             </Button>
+          </div>
+
+          {/* Process overview */}
+          <div className="text-center mb-12">
+            <h2 className="text-2xl font-semibold text-white mb-4">Three Simple Steps to Forever</h2>
+            <p className="text-white/80 max-w-2xl mx-auto">
+              From "see you later" to "I'll wear you close to my heart" – 
+              creating your group's perfect farewell memento has never been easier.
+            </p>
           </div>
 
           {/* Feature cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
             <Card className="p-6 bg-white/10 backdrop-blur-sm border-white/20 text-white">
-              <Camera className="w-8 h-8 text-yellow-300 mb-4 mx-auto" />
-              <h3 className="font-semibold mb-2">Upload & Arrange</h3>
+              <Share2 className="w-8 h-8 text-blue-300 mb-4 mx-auto" />
+              <h3 className="font-semibold mb-2">Share the Link</h3>
               <p className="text-sm text-white/80">
-                Upload your favorite photos and arrange them in beautiful hexagonal patterns
+                Create your project and share one magic link with everyone. No apps to download, 
+                no accounts needed – just pure simplicity.
               </p>
             </Card>
 
             <Card className="p-6 bg-white/10 backdrop-blur-sm border-white/20 text-white">
-              <Sparkles className="w-8 h-8 text-pink-300 mb-4 mx-auto" />
-              <h3 className="font-semibold mb-2">Customize Design</h3>
+              <Users className="w-8 h-8 text-pink-300 mb-4 mx-auto" />
+              <h3 className="font-semibold mb-2">Everyone Contributes</h3>
               <p className="text-sm text-white/80">
-                Resize, rotate, and position each photo to create your perfect collage
+                Each person uploads their favorite photo and adds their name. 
+                Watch as your group comes together, one smile at a time.
               </p>
             </Card>
 
             <Card className="p-6 bg-white/10 backdrop-blur-sm border-white/20 text-white">
-              <Shirt className="w-8 h-8 text-blue-300 mb-4 mx-auto" />
-              <h3 className="font-semibold mb-2">Print & Wear</h3>
+              <Heart className="w-8 h-8 text-yellow-300 mb-4 mx-auto" />
+              <h3 className="font-semibold mb-2">Design & Treasure</h3>
               <p className="text-sm text-white/80">
-                Get your design printed on premium quality t-shirts and wear your memories
+                Arrange everyone's photos into a beautiful collage, preview it on premium t-shirts, 
+                and order for the whole group. Memories you can wear.
               </p>
             </Card>
+          </div>
+
+          {/* Emotional hook */}
+          <div className="mt-16 p-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+            <h3 className="text-2xl font-bold text-white mb-4">
+              "The best goodbyes are the ones you can hold onto"
+            </h3>
+            <p className="text-white/80 max-w-2xl mx-auto mb-6">
+              Whether it's graduation, a job change, or the end of a project – some chapters deserve 
+              more than just a group chat. Create something tangible that captures the magic of your 
+              time together. Because years from now, you'll want to remember not just the work you did, 
+              but the faces you did it with.
+            </p>
+            <Button variant="hero" size="lg" className="text-lg px-8">
+              Create Our Memory
+            </Button>
           </div>
         </div>
       </div>
