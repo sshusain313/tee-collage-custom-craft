@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,7 @@ import {
   Upload, 
   Grid3X3, 
   Zap, 
-  Blur, 
+  Focus, 
   Layers,
   RotateCw,
   Eye,
