@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
@@ -23,7 +23,8 @@ import {
   Zap,
   Star,
   Eye,
-  EyeOff
+  EyeOff,
+  Plus
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -33,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Text } from 'fabric';
 
 interface TextTemplate {
   id: string;
@@ -60,7 +62,15 @@ const textEffects = [
   { id: 'curve', name: 'Curve', icon: RotateCw },
 ];
 
-export const TextSection = () => {
+// Add prop for fabricCanvas
+interface TextSectionProps {
+  fabricCanvas: any | null;
+}
+
+export const TextSection = ({ fabricCanvas }: TextSectionProps) => {
+  const [textObjects, setTextObjects] = useState<any[]>([]); // Array of { id, object }
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  // Sidebar state reflects the selected text object
   const [textContent, setTextContent] = useState('');
   const [selectedFont, setSelectedFont] = useState('Arial');
   const [fontSize, setFontSize] = useState([24]);
@@ -93,26 +103,95 @@ export const TextSection = () => {
     }
   ]);
 
+  // Helper to get selected object
+  const getSelectedObject = () => textObjects.find(obj => obj.id === selectedTextId)?.object;
+
+  // Add new text object
   const handleAddText = useCallback((type: 'heading' | 'subheading' | 'body') => {
+    if (!fabricCanvas) return;
     const defaultText = {
       heading: 'Your Heading',
       subheading: 'Your Subheading',
       body: 'Your text content here'
     };
-    
-    setTextContent(defaultText[type]);
-    
     const sizes = { heading: 32, subheading: 24, body: 16 };
     const weights = { heading: 'bold', subheading: '600', body: 'normal' };
-    
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    const obj = new Text(defaultText[type], {
+      left: 350,
+      top: 350,
+      fontFamily: 'Arial',
+      fontSize: sizes[type],
+      fontWeight: weights[type],
+      textAlign: 'left',
+      fill: '#000000',
+      selectable: true,
+      evented: true,
+    });
+    obj.set({
+      id,
+    });
+    fabricCanvas.add(obj);
+    setTextObjects(prev => [...prev, { id, object: obj }]);
+    setSelectedTextId(id);
+    // Set sidebar state to new object
+    setTextContent(defaultText[type]);
+    setSelectedFont('Arial');
     setFontSize([sizes[type]]);
     setFontWeight(weights[type]);
-    
-    toast({
-      title: "Text Added",
-      description: `${type} text added to canvas`,
+    setTextAlign('left');
+    setTextColor('#000000');
+    setLetterSpacing([0]);
+    setLineHeight([1.2]);
+    setActiveEffects([]);
+    fabricCanvas.setActiveObject(obj);
+    fabricCanvas.renderAll();
+    toast({ title: 'Text Added', description: `${type} text added to canvas` });
+  }, [fabricCanvas]);
+
+  // Add this function to handle the plus button
+  const handleAddNewTextObject = useCallback(() => {
+    if (!fabricCanvas) return;
+    // Use the current textContent for the new object
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    const obj = new Text(textContent, {
+      left: 350,
+      top: 350,
+      fontFamily: selectedFont,
+      fontSize: fontSize[0],
+      fontWeight,
+      textAlign,
+      fill: textColor,
+      selectable: true,
+      evented: true,
+      id,
+      charSpacing: letterSpacing[0] * 1000,
+      lineHeight: lineHeight[0],
+      fontStyle: activeEffects.includes('italic') ? 'italic' : 'normal',
+      underline: activeEffects.includes('underline'),
     });
-  }, []);
+    if (activeEffects.includes('shadow')) {
+      obj.set('shadow', '2px 2px 5px rgba(0,0,0,0.4)');
+    }
+    if (activeEffects.includes('outline')) {
+      obj.set({ stroke: textColor === '#ffffff' ? '#000000' : '#ffffff', strokeWidth: 2 });
+    }
+    fabricCanvas.add(obj);
+    setTextObjects(prev => [...prev, { id, object: obj }]);
+    setSelectedTextId(id);
+    // Clear sidebar for next text
+    setTextContent('');
+    setSelectedFont('Arial');
+    setFontSize([24]);
+    setFontWeight('normal');
+    setTextAlign('left');
+    setTextColor('#000000');
+    setLetterSpacing([0]);
+    setLineHeight([1.2]);
+    setActiveEffects([]);
+    fabricCanvas.setActiveObject(obj);
+    fabricCanvas.renderAll();
+  }, [fabricCanvas, textContent, selectedFont, fontSize, fontWeight, textAlign, textColor, letterSpacing, lineHeight, activeEffects]);
 
   const handleStyleToggle = useCallback((style: string) => {
     switch (style) {
@@ -197,11 +276,103 @@ export const TextSection = () => {
     '#f59e0b', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16'
   ];
 
+  // Listen for selection changes on the canvas
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    const handleSelection = (e: any) => {
+      const obj = e.selected && e.selected[0];
+      if (obj && obj.type === 'text' && obj.id) {
+        setSelectedTextId(obj.id);
+        // Sync sidebar state to selected object
+        setTextContent(obj.text || '');
+        setSelectedFont(obj.fontFamily || 'Arial');
+        setFontSize([obj.fontSize || 24]);
+        setFontWeight(obj.fontWeight || 'normal');
+        setTextAlign(obj.textAlign || 'left');
+        setTextColor(obj.fill || '#000000');
+        setLetterSpacing([obj.charSpacing ? obj.charSpacing / 1000 : 0]);
+        setLineHeight([obj.lineHeight || 1.2]);
+        const effects: string[] = [];
+        if (obj.fontStyle === 'italic') effects.push('italic');
+        if (obj.underline) effects.push('underline');
+        if (obj.shadow) effects.push('shadow');
+        if (obj.strokeWidth > 0) effects.push('outline');
+        setActiveEffects(effects);
+      } else {
+        setSelectedTextId(null);
+      }
+    };
+    fabricCanvas.on('selection:created', handleSelection);
+    fabricCanvas.on('selection:updated', handleSelection);
+    fabricCanvas.on('selection:cleared', () => setSelectedTextId(null));
+    return () => {
+      fabricCanvas.off('selection:created', handleSelection);
+      fabricCanvas.off('selection:updated', handleSelection);
+      fabricCanvas.off('selection:cleared');
+    };
+  }, [fabricCanvas]);
+
+  // Update selected text object when sidebar state changes
+  useEffect(() => {
+    if (!fabricCanvas || !selectedTextId) return;
+    const obj = getSelectedObject();
+    if (!obj) return;
+    obj.set({
+      text: textContent,
+      fontFamily: selectedFont,
+      fontSize: fontSize[0],
+      fontWeight,
+      fontStyle: activeEffects.includes('italic') ? 'italic' : 'normal',
+      underline: activeEffects.includes('underline'),
+      textAlign,
+      fill: textColor,
+      charSpacing: letterSpacing[0] * 1000,
+      lineHeight: lineHeight[0],
+    });
+    if (activeEffects.includes('shadow')) {
+      obj.set('shadow', '2px 2px 5px rgba(0,0,0,0.4)');
+    } else {
+      obj.set('shadow', null);
+    }
+    if (activeEffects.includes('outline')) {
+      obj.set({ stroke: textColor === '#ffffff' ? '#000000' : '#ffffff', strokeWidth: 2 });
+    } else {
+      obj.set({ stroke: null, strokeWidth: 0 });
+    }
+    fabricCanvas.renderAll();
+  }, [textContent, selectedFont, fontSize, fontWeight, textAlign, textColor, letterSpacing, lineHeight, activeEffects, selectedTextId, fabricCanvas]);
+
+  // Delete selected text object
+  const handleDeleteText = useCallback(() => {
+    if (!fabricCanvas || !selectedTextId) return;
+    const obj = getSelectedObject();
+    if (!obj) return;
+    fabricCanvas.remove(obj);
+    setTextObjects(prev => prev.filter(o => o.id !== selectedTextId));
+    setSelectedTextId(null);
+    // Reset sidebar state
+    setTextContent('');
+    setSelectedFont('Arial');
+    setFontSize([24]);
+    setFontWeight('normal');
+    setTextAlign('left');
+    setTextColor('#000000');
+    setLetterSpacing([0]);
+    setLineHeight([1.2]);
+    setActiveEffects([]);
+    fabricCanvas.discardActiveObject();
+    fabricCanvas.renderAll();
+    toast({ title: 'Text Deleted', description: 'Text object removed from canvas' });
+  }, [fabricCanvas, selectedTextId]);
+
   return (
     <div className="space-y-4">
       {/* Quick Add Text */}
       <div className="space-y-2">
-        <h4 className="text-sm font-medium">Add Text</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium">Add Text</h4>
+          
+        </div>
         <div className="grid gap-2">
           <Button
             variant="outline"
@@ -233,13 +404,24 @@ export const TextSection = () => {
       <Separator />
 
       {/* Text Input */}
-      <div className="space-y-2">
+      <div className="space-x-2">
         <h4 className="text-sm font-medium">Text Content</h4>
+        <span className="w-full flex flex-row ">
         <Input
           placeholder="Enter your text..."
           value={textContent}
           onChange={(e) => setTextContent(e.target.value)}
         />
+        <Button
+            variant="outline"
+            size="icon"
+            onClick={handleAddNewTextObject}
+            title="Add new text object"
+            className="ml-2"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </span>
       </div>
 
       {/* Font Selection */}
@@ -471,6 +653,20 @@ export const TextSection = () => {
           ))}
         </div>
       </div>
+
+      {selectedTextId && (
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDeleteText}
+            className="h-8 px-3 text-destructive"
+          >
+            <Trash2 className="w-4 h-4 mr-1" />
+            Delete Text
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,7 +12,6 @@ import {
   Upload, 
   Grid3X3, 
   Zap, 
-  Blur, 
   Layers,
   RotateCw,
   Eye,

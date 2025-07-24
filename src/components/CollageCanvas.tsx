@@ -10,6 +10,7 @@ import { useImageUploader } from './ImageUploader';
 import { Polygon, Circle, Rect } from 'fabric';
 import Layout from './Layout';
 import { DesignSidebar } from './DesignSidebar';
+import * as fabric from 'fabric';
 
 interface CollageCanvasProps {
   tshirtImage?: string;
@@ -137,6 +138,16 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     y: 0,
     cellIndex: -1
   });
+
+  // Add background state at the top of the component
+  const [backgroundType, setBackgroundType] = useState<'color' | 'gradient' | 'pattern' | 'image'>('color');
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+  const [backgroundGradient, setBackgroundGradient] = useState({ id: 'sunset', name: 'Sunset', value: 'linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%)' });
+  const [backgroundPattern, setBackgroundPattern] = useState({ id: 'dots', name: 'Dots', icon: null });
+  const [backgroundOpacity, setBackgroundOpacity] = useState([100]);
+  const [backgroundBlur, setBackgroundBlur] = useState([0]);
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
+  const [selectedBackgroundImage, setSelectedBackgroundImage] = useState<string>('');
 
   const { createHexagonalGrid, createSquareGrid, createCenterFocusGrid } = useGridTemplates();
   const { uploadImageToCell } = useImageUploader();
@@ -417,6 +428,46 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
     fabricCanvas.renderAll();
   }, [mode, gridCells, fabricCanvas, isGridVisible, updateCellInteractivity]);
 
+  // Add useEffect to update the canvas background in real time
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    // Remove any previous background image object
+    fabricCanvas.backgroundImage = null;
+    // Remove any previous background pattern object (if you add one)
+    // Set background color
+    if (backgroundType === 'color') {
+      fabricCanvas.backgroundColor = backgroundColor;
+      fabricCanvas.renderAll();
+    } else if (backgroundType === 'gradient') {
+      // For gradients, create a rect with a gradient fill as the bottom-most object
+      // (Fabric.js does not support CSS gradients as backgroundColor)
+      // For now, fallback to backgroundColor
+      fabricCanvas.backgroundColor = '#ffffff';
+      fabricCanvas.renderAll();
+      // TODO: Implement Fabric.js gradient background
+    } else if (backgroundType === 'image' && selectedBackgroundImage) {
+      (fabric.Image.fromURL as any)(selectedBackgroundImage, (img: any) => {
+        img.set({
+          scaleX: fabricCanvas.width / img.width,
+          scaleY: fabricCanvas.height / img.height,
+          opacity: backgroundOpacity[0] / 100,
+          selectable: false,
+          evented: false,
+        });
+        if (backgroundBlur[0] > 0) {
+          img.filters = [new (fabric.Image as any).filters.Blur({ blur: backgroundBlur[0] / 20 })];
+          img.applyFilters && img.applyFilters();
+        }
+        fabricCanvas.backgroundImage = img;
+        fabricCanvas.renderAll();
+      });
+    } else {
+      fabricCanvas.backgroundColor = '#ffffff';
+      fabricCanvas.renderAll();
+    }
+    // Opacity and blur for color/gradient can be handled by overlaying a rect if needed
+  }, [fabricCanvas, backgroundType, backgroundColor, backgroundGradient, backgroundPattern, backgroundOpacity, backgroundBlur, selectedBackgroundImage]);
+
   // Handle canvas right-click to close context menu
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -549,6 +600,7 @@ export const CollageCanvas = ({ tshirtImage }: CollageCanvasProps) => {
           onSquareRowsChange={setSquareRows}
           onSquareColumnsChange={setSquareColumns}
           onFocusCountChange={setFocusCount}
+          fabricCanvas={fabricCanvas}
         />
         </div>
 

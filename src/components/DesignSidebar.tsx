@@ -70,6 +70,23 @@ interface DesignSidebarProps {
   onSquareRowsChange?: (rows: number) => void;
   onSquareColumnsChange?: (columns: number) => void;
   onFocusCountChange?: (count: number) => void;
+  fabricCanvas?: any | null;
+  backgroundType: 'color' | 'gradient' | 'pattern' | 'image';
+  setBackgroundType: (type: 'color' | 'gradient' | 'pattern' | 'image') => void;
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
+  backgroundGradient: any;
+  setBackgroundGradient: (gradient: any) => void;
+  backgroundPattern: any;
+  setBackgroundPattern: (pattern: any) => void;
+  backgroundOpacity: number[];
+  setBackgroundOpacity: (opacity: number[]) => void;
+  backgroundBlur: number[];
+  setBackgroundBlur: (blur: number[]) => void;
+  uploadedBackgrounds: string[];
+  setUploadedBackgrounds: (urls: string[]) => void;
+  selectedBackgroundImage: string;
+  setSelectedBackgroundImage: (url: string) => void;
 }
 
 export const DesignSidebar = ({
@@ -87,7 +104,24 @@ export const DesignSidebar = ({
   onHexRowsChange,
   onSquareRowsChange,
   onSquareColumnsChange,
-  onFocusCountChange
+  onFocusCountChange,
+  fabricCanvas,
+  backgroundType,
+  setBackgroundType,
+  backgroundColor,
+  setBackgroundColor,
+  backgroundGradient,
+  setBackgroundGradient,
+  backgroundPattern,
+  setBackgroundPattern,
+  backgroundOpacity,
+  setBackgroundOpacity,
+  backgroundBlur,
+  setBackgroundBlur,
+  uploadedBackgrounds,
+  setUploadedBackgrounds,
+  selectedBackgroundImage,
+  setSelectedBackgroundImage
 }: DesignSidebarProps) => {
   const [activeSection, setActiveSection] = useState<string>('templates');
   const [searchQuery, setSearchQuery] = useState('');
@@ -373,9 +407,26 @@ export const DesignSidebar = ({
       case 'elements':
         return <ElementsSection />;
       case 'text':
-        return <TextSection />;
+        return <TextSection fabricCanvas={fabricCanvas} />;
       case 'background':
-        return <BackgroundSection />;
+        return <BackgroundSection
+          backgroundType={backgroundType}
+          setBackgroundType={setBackgroundType}
+          backgroundColor={backgroundColor}
+          setBackgroundColor={setBackgroundColor}
+          backgroundGradient={backgroundGradient}
+          setBackgroundGradient={setBackgroundGradient}
+          backgroundPattern={backgroundPattern}
+          setBackgroundPattern={setBackgroundPattern}
+          backgroundOpacity={backgroundOpacity}
+          setBackgroundOpacity={setBackgroundOpacity}
+          backgroundBlur={backgroundBlur}
+          setBackgroundBlur={setBackgroundBlur}
+          uploadedBackgrounds={uploadedBackgrounds}
+          setUploadedBackgrounds={setUploadedBackgrounds}
+          selectedBackgroundImage={selectedBackgroundImage}
+          setSelectedBackgroundImage={setSelectedBackgroundImage}
+        />;
       case 'tools':
         return renderToolsSection();
       default:
