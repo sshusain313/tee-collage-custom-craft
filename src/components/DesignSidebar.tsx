@@ -1,11 +1,8 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from "@/components/ui/badge"
-import { CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge";
 
 import {
     Sidebar,
@@ -20,7 +17,7 @@ import {
     useSidebar,
   } from "@/components/ui/sidebar"
 
-  import { 
+import { 
   Search, 
   Grid3X3, 
   Hexagon, 
@@ -52,6 +49,10 @@ import {
   Crown
 } from 'lucide-react';
 import { GridType } from './GridTemplates';
+import { UploadSection } from './UploadSection';
+import { ElementsSection } from './ElementsSection';
+import { TextSection } from './TextSection';
+import { BackgroundSection } from './BackgroundSection';
 
 interface DesignSidebarProps {
   selectedGrid: GridType | null;
@@ -226,7 +227,6 @@ export const DesignSidebar = ({
   const renderTemplatesSection = () => (
     <div className="space-y-4">
       <div className="space-y-2">
-        {/* <h4 className="text-md font-medium mb-4">Grid Templates</h4> */}
         <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
         <Input
@@ -237,7 +237,12 @@ export const DesignSidebar = ({
         />
       </div>
         <div className="grid grid-cols-2 gap-2">
-          {gridTemplates.map(({ type, label, icon: Icon, soon }) => (
+          {[
+            { type: 'hexagonal' as GridType, label: 'Hexagonal', icon: Hexagon, preview: '/api/placeholder/80/80', soon: false },
+            { type: 'square' as GridType, label: 'Square Grid', icon: Grid3X3, preview: '/api/placeholder/80/80', soon: false },
+            { type: 'center-focus' as GridType, label: 'Center Focus', icon: Focus, preview: '/api/placeholder/80/80', soon: false },
+            {type: 'custom' as GridType, label: 'Custom', soon: true, icon: Upload, preview: '/api/placeholder/80/80'}
+          ].map(({ type, label, icon: Icon, soon }) => (
             <Button
               key={type}
               variant={selectedGrid === type ? 'default' : 'outline'}
@@ -359,148 +364,18 @@ export const DesignSidebar = ({
     </div>
   );
 
-  const renderUploadsSection = () => (
-    <div className="space-y-4">
-      <div className="text-center p-6 border-2 border-dashed border-border rounded-lg">
-        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-        <h4 className="text-sm font-medium mb-1">Upload Photos</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Drag and drop or click to browse
-        </p>
-        <Button size="sm" variant="outline">
-          Choose Files
-        </Button>
-      </div>
-      
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Recent Uploads</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="aspect-square bg-muted rounded-md flex items-center justify-center">
-              <Image className="w-6 h-6 text-muted-foreground" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderElementsSection = () => (
-    <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          placeholder="Search elements..."
-          className="pl-10"
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Shapes</h4>
-        <div className="grid grid-cols-4 gap-2">
-          {[Circle, Grid3X3, Hexagon, Star].map((Icon, i) => (
-            <Button key={i} variant="outline" size="sm" className="aspect-square p-2">
-              <Icon className="w-4 h-4" />
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Decorative</h4>
-        <div className="grid grid-cols-4 gap-2">
-          {[Heart, Star, Crown, Focus].map((Icon, i) => (
-            <Button key={i} variant="outline" size="sm" className="aspect-square p-2">
-              <Icon className="w-4 h-4" />
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderTextSection = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Add Text</h4>
-        <Button variant="outline" className="w-full justify-start">
-          <Type className="w-4 h-4 mr-2" />
-          Add a heading
-        </Button>
-        <Button variant="outline" className="w-full justify-start">
-          <Type className="w-4 h-4 mr-2" />
-          Add a subheading
-        </Button>
-        <Button variant="outline" className="w-full justify-start">
-          <Type className="w-4 h-4 mr-2" />
-          Add body text
-        </Button>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Text Styles</h4>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm">Bold</Button>
-          <Button variant="outline" size="sm">Italic</Button>
-          <Button variant="outline" size="sm">Underline</Button>
-          <Button variant="outline" size="sm">Center</Button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderBackgroundSection = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Background Color</h4>
-        <div className="grid grid-cols-6 gap-2">
-          {['#ffffff', '#f3f4f6', '#e5e7eb', '#d1d5db', '#9ca3af', '#6b7280'].map((color) => (
-            <button
-              key={color}
-              className="w-8 h-8 rounded-md border border-border"
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">T-Shirt Colors</h4>
-        <div className="grid grid-cols-6 gap-2">
-          {['#000000', '#ffffff', '#ef4444', '#3b82f6', '#10b981', '#f59e0b'].map((color) => (
-            <button
-              key={color}
-              className="w-8 h-8 rounded-md border border-border"
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Patterns</h4>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm">Dots</Button>
-          <Button variant="outline" size="sm">Stripes</Button>
-          <Button variant="outline" size="sm">Gradient</Button>
-          <Button variant="outline" size="sm">Texture</Button>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderSectionContent = () => {
     switch (activeSection) {
       case 'templates':
         return renderTemplatesSection();
       case 'uploads':
-        return renderUploadsSection();
+        return <UploadSection />;
       case 'elements':
-        return renderElementsSection();
+        return <ElementsSection />;
       case 'text':
-        return renderTextSection();
+        return <TextSection />;
       case 'background':
-        return renderBackgroundSection();
+        return <BackgroundSection />;
       case 'tools':
         return renderToolsSection();
       default:
@@ -535,7 +410,6 @@ export const DesignSidebar = ({
         </div>
         {renderSectionContent()}
       </div>
-
     </div>
   );
 };
