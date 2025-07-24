@@ -15,7 +15,10 @@ import {
   MoreVertical,
   Trash2,
   Edit3,
-  Download
+  Download,
+  GripVertical,
+  Play,
+  Eye
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -40,6 +43,7 @@ export const UploadSection = () => {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [draggedFile, setDraggedFile] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -124,6 +128,16 @@ export const UploadSection = () => {
     });
   }, [selectedFiles]);
 
+  const handleFileDragStart = useCallback((e: React.DragEvent, file: UploadedFile) => {
+    setDraggedFile(file);
+    e.dataTransfer.setData('application/json', JSON.stringify(file));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
+  const handleFileDragEnd = useCallback(() => {
+    setDraggedFile(null);
+  }, []);
+
   const filteredFiles = uploadedFiles.filter(file => 
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -145,37 +159,56 @@ export const UploadSection = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Upload Area */}
-      <div
-        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          dragActive 
-            ? 'border-primary bg-primary/5' 
-            : 'border-border hover:border-primary/50'
-        }`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-        <h4 className="text-sm font-medium mb-1">Upload Media</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Drag files here or click to browse
-        </p>
-        <div className="flex gap-2 justify-center">
-          <Badge variant="secondary" className="text-xs">Images</Badge>
-          <Badge variant="secondary" className="text-xs">SVGs</Badge>
-          <Badge variant="secondary" className="text-xs">Videos</Badge>
-        </div>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="mt-3"
-          onClick={() => fileInputRef.current?.click()}
+    <div className="space-y-6">
+      {/* Enhanced Upload Area */}
+      <Card className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
+        dragActive 
+          ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
+          : 'border-border hover:border-primary/50 hover:bg-muted/30'
+      }`}>
+        <div
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className="space-y-4"
         >
-          Choose Files
-        </Button>
+          <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+            <Upload className="w-8 h-8 text-muted-foreground" />
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="text-lg font-semibold text-foreground">Upload Your Media</h4>
+            <p className="text-sm text-muted-foreground">
+              Drag files here or click to browse your computer
+            </p>
+          </div>
+          
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Badge variant="secondary" className="text-xs px-3 py-1">
+              <Image className="w-3 h-3 mr-1" />
+              Images
+            </Badge>
+            <Badge variant="secondary" className="text-xs px-3 py-1">
+              <FileText className="w-3 h-3 mr-1" />
+              SVGs
+            </Badge>
+            <Badge variant="secondary" className="text-xs px-3 py-1">
+              <Video className="w-3 h-3 mr-1" />
+              Videos
+            </Badge>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            className="mt-4 px-6 py-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Choose Files
+          </Button>
+        </div>
+        
         <input
           ref={fileInputRef}
           type="file"
@@ -184,46 +217,52 @@ export const UploadSection = () => {
           onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
           className="hidden"
         />
-      </div>
+      </Card>
 
-      {/* Search and Actions */}
+      {/* Enhanced Search and Actions */}
       {uploadedFiles.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search uploads..."
+              placeholder="Search your uploads..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background border-border focus:border-primary"
             />
           </div>
           
           {selectedFiles.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {selectedFiles.length} selected
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <span className="text-sm font-medium text-foreground">
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
               </span>
               <Button
                 size="sm"
                 variant="destructive"
                 onClick={handleBatchDelete}
-                className="h-6 px-2 text-xs"
+                className="h-8 px-3"
               >
                 <Trash2 className="w-3 h-3 mr-1" />
-                Delete
+                Delete Selected
               </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* Files Gallery */}
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">
-          Your Uploads ({filteredFiles.length})
-        </h4>
-        <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+      {/* Enhanced Files Gallery */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-foreground">
+            Your Media Library
+          </h4>
+          <Badge variant="outline" className="text-xs">
+            {filteredFiles.length} file{filteredFiles.length !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto custom-scrollbar">
           {filteredFiles.map((file) => {
             const Icon = getFileIcon(file.type);
             const isSelected = selectedFiles.includes(file.id);
@@ -232,67 +271,123 @@ export const UploadSection = () => {
             return (
               <Card
                 key={file.id}
-                className={`relative p-2 cursor-pointer transition-all hover:shadow-sm ${
-                  isSelected ? 'ring-2 ring-primary' : ''
-                }`}
+                className={`group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer ${
+                  isSelected ? 'ring-2 ring-primary shadow-lg' : ''
+                } ${draggedFile?.id === file.id ? 'opacity-50 scale-95' : ''}`}
                 onClick={() => toggleFileSelection(file.id)}
               >
-                <div className="aspect-square bg-muted rounded-md flex items-center justify-center mb-2 overflow-hidden">
-                  {file.type === 'image' ? (
-                    <img 
-                      src={file.url} 
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Icon className="w-6 h-6 text-muted-foreground" />
-                  )}
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-xs font-medium truncate">{file.name}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)}
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="w-3 h-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem>
-                          <Edit3 className="w-3 h-3 mr-2" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="w-3 h-3 mr-2" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => removeFile(file.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-3 h-3 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                <div className="relative">
+                  {/* Drag Handle */}
+                  <div 
+                    className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+                    draggable
+                    onDragStart={(e) => handleFileDragStart(e, file)}
+                    onDragEnd={handleFileDragEnd}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="bg-background/80 backdrop-blur-sm rounded-md p-1">
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  {/* File Preview */}
+                  <div className="aspect-square bg-muted/30 rounded-t-lg flex items-center justify-center overflow-hidden relative">
+                    {file.type === 'image' ? (
+                      <img 
+                        src={file.url} 
+                        alt={file.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        draggable={false}
+                      />
+                    ) : file.type === 'video' ? (
+                      <div className="relative w-full h-full">
+                        <video 
+                          src={file.url} 
+                          className="w-full h-full object-cover"
+                          muted
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <Play className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Icon className="w-8 h-8 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">SVG</span>
+                      </div>
+                    )}
+                    
+                    {/* Selection Indicator */}
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* File Info */}
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate" title={file.name}>
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Edit3 className="w-4 h-4 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Download className="w-4 h-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => removeFile(file.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    
+                    {/* Drag Instruction */}
+                    <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                      Drag to canvas or click to select
+                    </div>
                   </div>
                 </div>
                 
+                {/* Upload Progress Overlay */}
                 {isUploading && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-md">
-                    <div className="w-full px-4">
+                  <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center rounded-lg">
+                    <div className="w-full max-w-[80%] space-y-2">
                       <Progress value={file.uploadProgress} className="h-2" />
-                      <p className="text-xs text-center mt-1">
-                        {Math.round(file.uploadProgress)}%
+                      <p className="text-xs text-center text-muted-foreground">
+                        Uploading... {Math.round(file.uploadProgress)}%
                       </p>
                     </div>
                   </div>
@@ -301,6 +396,12 @@ export const UploadSection = () => {
             );
           })}
         </div>
+        
+        {filteredFiles.length === 0 && uploadedFiles.length > 0 && (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No files match your search</p>
+          </div>
+        )}
       </div>
     </div>
   );
