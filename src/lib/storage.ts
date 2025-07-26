@@ -222,6 +222,18 @@ class StorageService {
     }
   }
 
+  // Delete a specific project
+  deleteProject(projectId: string): boolean {
+    try {
+      const projects = this.getProjects();
+      const filteredProjects = projects.filter(p => p.id !== projectId);
+      return this.setItem(STORAGE_KEYS.PROJECTS, filteredProjects);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      return false;
+    }
+  }
+
   // Get storage usage info
   getStorageInfo(): { used: number; available: number; percentage: number } {
     try {

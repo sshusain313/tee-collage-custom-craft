@@ -5,6 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import Layout from '@/components/Layout';
 import { 
   Users, 
   Heart, 
@@ -19,20 +31,33 @@ import {
   List,
   TrendingUp,
   Clock,
-  Star
+  Star,
+  Trash2,
+  AlertTriangle,
+  MoreVertical
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { storageService } from '@/lib/storage';
 import { Project } from '@/lib/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const ProjectsList = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'name'>('recent');
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -45,6 +70,35 @@ export const ProjectsList = () => {
       setIsLoading(false);
     }
   }, []);
+
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    setDeletingProjectId(projectId);
+    try {
+      const success = storageService.deleteProject(projectId);
+      if (success) {
+        // Remove from local state
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        toast({
+          title: "Project deleted successfully",
+          description: `"${projectName}" has been permanently removed.`,
+        });
+      } else {
+        toast({
+          title: "Failed to delete project",
+          description: "An error occurred while deleting the project. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error deleting project",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingProjectId(null);
+    }
+  };
 
   const getSubmissionRate = (project: Project) => {
     if (!project.submissions || !project.memberCount) return 0;
@@ -124,6 +178,7 @@ export const ProjectsList = () => {
   }
 
   return (
+    <Layout>
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Enhanced Header */}
       <div className="text-center space-y-6">
@@ -335,15 +390,57 @@ export const ProjectsList = () => {
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <Button 
-                    onClick={() => navigate(`/my-project/${project.id}`)}
-                    className="w-full gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    variant="outline"
-                  >
-                    View Project
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => navigate(`/my-project/${project.id}`)}
+                      className="flex-1 gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                      variant="outline"
+                    >
+                      View Project
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                    
+                    {/* Delete Button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-destructive" />
+                            Delete Project
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{project.groupName}"? This action cannot be undone and will permanently remove:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>All project data and settings</li>
+                              <li>{getSubmissionCount(project)} member submissions</li>
+                              <li>All voting results</li>
+                              <li>Project configuration</li>
+                            </ul>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteProject(project.id, project.groupName)}
+                            disabled={deletingProjectId === project.id}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {deletingProjectId === project.id ? 'Deleting...' : 'Delete Project'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
@@ -385,14 +482,56 @@ export const ProjectsList = () => {
                           {submissionRate.toFixed(0)}%
                         </div>
                       </div>
-                      <Button 
-                        onClick={() => navigate(`/my-project/${project.id}`)}
-                        variant="hero"
-                        className="gap-2"
-                      >
-                        View Project
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => navigate(`/my-project/${project.id}`)}
+                          variant="hero"
+                          className="gap-2"
+                        >
+                          View Project
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                        
+                        {/* Delete Button */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-destructive" />
+                                Delete Project
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{project.groupName}"? This action cannot be undone and will permanently remove:
+                                <ul className="list-disc list-inside mt-2 space-y-1">
+                                  <li>All project data and settings</li>
+                                  <li>{getSubmissionCount(project)} member submissions</li>
+                                  <li>All voting results</li>
+                                  <li>Project configuration</li>
+                                </ul>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteProject(project.id, project.groupName)}
+                                disabled={deletingProjectId === project.id}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deletingProjectId === project.id ? 'Deleting...' : 'Delete Project'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -402,5 +541,6 @@ export const ProjectsList = () => {
         </div>
       )}
     </div>
+    </Layout>
   );
 }; 

@@ -6,6 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import Layout from '@/components/Layout';
 import { 
   Share2, 
   Download, 
@@ -26,7 +38,9 @@ import {
   Star,
   ArrowLeft,
   BarChart3,
-  Activity
+  Activity,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CollageStyle } from './CollageStyleCard';
@@ -41,6 +55,7 @@ export const ProjectDashboard = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'analytics'>('overview');
+  const [isDeleting, setIsDeleting] = useState(false);
   
   useEffect(() => {
     if (!projectId) {
@@ -55,6 +70,36 @@ export const ProjectDashboard = () => {
     }
     setProject(loadedProject);
   }, [projectId, navigate]);
+
+  const handleDeleteProject = async () => {
+    if (!project || !projectId) return;
+    
+    setIsDeleting(true);
+    try {
+      const success = storageService.deleteProject(projectId);
+      if (success) {
+        toast({
+          title: "Project deleted successfully",
+          description: `"${project.groupName}" has been permanently removed.`,
+        });
+        navigate('/my-projects');
+      } else {
+        toast({
+          title: "Failed to delete project",
+          description: "An error occurred while deleting the project. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error deleting project",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (!project) {
     return null;
@@ -133,10 +178,11 @@ export const ProjectDashboard = () => {
   const status = getProjectStatus();
 
   return (
+    <Layout>
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Enhanced Header */}
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => navigate('/my-projects')}
@@ -145,11 +191,48 @@ export const ProjectDashboard = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
           </Button>
+
+          {/* Delete Project Button */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Delete Project
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  Delete Project
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{project.groupName}"? This action cannot be undone and will permanently remove:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>All project data and settings</li>
+                    <li>{project.submissions.length} member submissions</li>
+                    <li>All voting results</li>
+                    <li>Project configuration</li>
+                  </ul>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteProject}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Project'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex items-center gap-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-full px-6 py-3 shadow-elegant">
+            <div className="flex items-center gap-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-full px-6 py-3 text-white">
               <status.icon className="w-5 h-5 text-primary" />
               <Badge className={status.color}>
                 {status.label}
@@ -157,13 +240,13 @@ export const ProjectDashboard = () => {
             </div>
           </div>
           <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
               {project.groupName}
             </h1>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-xl text-white/90">
               {project.occasion}
             </p>
-            <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center gap-6 text-sm text-white/80">
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
                 {project.memberCount} members
@@ -546,5 +629,6 @@ export const ProjectDashboard = () => {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   );
 };

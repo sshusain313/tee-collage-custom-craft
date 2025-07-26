@@ -588,15 +588,127 @@ export const MemberUploadForm = ({ projectId, groupName, occasion }: MemberUploa
                 <div className="grid grid-cols-3 gap-3">
                   {collageStyles.map(({ style, label }) => (
                     <div key={style} className="space-y-2">
-                      <CollageStyleCard
-                        style={style}
-                        label={label}
-                        isSelected={formData.collageStyle === style}
-                        onSelect={handleStyleSelect}
-                        votes={project?.votes[style] || 0}
-                        percentage={getPercentage(style)}
-                        showVoting={true}
-                      />
+                      <Card 
+                        className={`cursor-pointer transition-all duration-200 hover:shadow-md relative ${
+                          formData.collageStyle === style 
+                            ? 'ring-2 ring-primary bg-primary/5 border-primary' 
+                            : 'hover:border-primary/50'
+                        }`}
+                        onClick={() => handleStyleSelect(style)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-center space-y-3">
+                            {/* Collage Style Image */}
+                            <div className="relative w-full h-32 flex items-center justify-center">
+                              <img
+                                src={style === 'circular' ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jaXJjbGUgeyBmaWxsOiB3aGl0ZTsgc3Ryb2tlOiAjOGI1Y2Y2OyBzdHJva2Utd2lkdGg6IDI7IH0KICAgICAgLmJhY2tncm91bmQgeyBmaWxsOiB3aGl0ZTsgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgCiAgPCEtLSBCYWNrZ3JvdW5kIC0tPgogIDxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBjbGFzcz0iYmFja2dyb3VuZCIvPgogIAogIDwhLS0gQ2VudHJhbCBsYXJnZSBjaXJjbGUgLS0+CiAgPGNpcmNsZSBjeD0iMTAwIiBjeT0iMTAwIiByPSIyNSIgY2xhc3M9ImNpcmNsZSIvPgogIAogIDwhLS0gOCBzdXJyb3VuZGluZyBjaXJjbGVzIC0tPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI4IiBjbGFzcz0iY2lyY2xlIi8+CiAgPGNpcmNsZSBjeD0iMTQwIiBjeT0iNjAiIHI9IjgiIGNsYXNzPSJjaXJjbGUiLz4KICA8Y2lyY2xlIGN4PSIxNjAiIGN5PSIxMDAiIHI9IjgiIGNsYXNzPSJjaXJjbGUiLz4KICA8Y2lyY2xlIGN4PSIxNDAiIGN5PSIxNDAiIHI9IjgiIGNsYXNzPSJjaXJjbGUiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSIxNTAiIHI9IjgiIGNsYXNzPSJjaXJjbGUiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjE0MCIgcj0iOCIgY2xhc3M9ImNpcmNsZSIvPgogIDxjaXJjbGUgY3g9IjQwIiBjeT0iMTAwIiByPSI4IiBjbGFzcz0iY2lyY2xlIi8+CiAgPGNpcmNsZSBjeD0iNjAiIGN5PSI2MCIgcj0iOCIgY2xhc3M9ImNpcmNsZSIvPgo8L3N2Zz4=' :
+                                       style === 'square' ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5zcXVhcmUgeyBmaWxsOiB3aGl0ZTsgc3Ryb2tlOiAjZWM0ODk5OyBzdHJva2Utd2lkdGg6IDI7IH0KICAgICAgLmJhY2tncm91bmQgeyBmaWxsOiB3aGl0ZTsgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgCiAgPCEtLSBCYWNrZ3JvdW5kIC0tPgogIDxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBjbGFzcz0iYmFja2dyb3VuZCIvPgogIAogIDwhLS0gQ2VudHJhbCBsYXJnZSBzcXVhcmUgLS0+CiAgPHJlY3QgeD0iNzUiIHk9Ijc1IiB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGNsYXNzPSJzcXVhcmUiLz4KICAKICA8IS0tIFRvcCByb3cgLSA0IHNxdWFyZXMgLS0+CiAgPHJlY3QgeD0iNjAiIHk9IjQwIiB3aWR0aD0iMTUiIGhlaWdodD0iMTUiIGNsYXNzPSJzcXVhcmUiLz4KICA8cmVjdCB4PSI4MCIgeT0iNDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjEwMCIgeT0iNDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjEyMCIgeT0iNDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIAogIDwhLS0gTGVmdCBjb2x1bW4gLSAzIHNxdWFyZXMgLS0+CiAgPHJlY3QgeD0iNDAiIHk9IjYwIiB3aWR0aD0iMTUiIGhlaWdodD0iMTUiIGNsYXNzPSJzcXVhcmUiLz4KICA8cmVjdCB4PSI0MCIgeT0iODAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjQwIiB5PSIxMDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIAogIDwhLS0gUmlnaHQgY29sdW1uIC0gMyBzcXVhcmVzIC0tPgogIDxyZWN0IHg9IjE0MCIgeT0iNjAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjE0MCIgeT0iODAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjE0MCIgeT0iMTAwIiB3aWR0aD0iMTUiIGhlaWdodD0iMTUiIGNsYXNzPSJzcXVhcmUiLz4KICAKICA8IS0tIEJvdHRvbSByb3cgLSA0IHNxdWFyZXMgLS0+CiAgPHJlY3QgeD0iNjAiIHk9IjE0MCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjE1IiBjbGFzcz0ic3F1YXJlIi8+CiAgPHJlY3QgeD0iODAiIHk9IjE0MCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjE1IiBjbGFzcz0ic3F1YXJlIi8+CiAgPHJlY3QgeD0iMTAwIiB5PSIxNDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgY2xhc3M9InNxdWFyZSIvPgogIDxyZWN0IHg9IjEyMCIgeT0iMTQwIiB3aWR0aD0iMTUiIGhlaWdodD0iMTUiIGNsYXNzPSJzcXVhcmUiLz4KPC9zdmc+' :
+                                       'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5oZXhhZ29uIHsgZmlsbDogd2hpdGU7IHN0cm9rZTogIzhiNWNmNjsgc3Ryb2tlLXdpZHRoOiAyOyB9CiAgICAgIC5iYWNrZ3JvdW5kIHsgZmlsbDogd2hpdGU7IH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIAogIDwhLS0gQmFja2dyb3VuZCAtLT4KICA8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgY2xhc3M9ImJhY2tncm91bmQiLz4KICAKICA8IS0tIENlbnRyYWwgbGFyZ2UgaGV4YWdvbiAtLT4KICA8cG9seWdvbiBwb2ludHM9IjEwMCw2MCAxMzAsNzUgMTMwLDEwNSAxMDAsMTIwIDcwLDEwNSA3MCw3NSIgY2xhc3M9ImhleGFnb24iLz4KICAKICA8IS0tIDYgc3Vycm91bmRpbmcgaGV4YWdvbnMgLS0+CiAgPHBvbHlnb24gcG9pbnRzPSIxMDAsMzAgMTE1LDM3LjUgMTE1LDUyLjUgMTAwLDYwIDg1LDUyLjUgODUsMzcuNSIgY2xhc3M9ImhleGFnb24iLz4KICA8cG9seWdvbiBwb2ludHM9IjE0NSw0NSAxNjAsNTIuNSAxNjAsNjcuNSAxNDUsNzUgMTMwLDY3LjUgMTMwLDUyLjUiIGNsYXNzPSJoZXhhZ29uIi8+CiAgPHBvbHlnb24gcG9pbnRzPSIxNDUsMTA1IDE2MCwxMTIuNSAxNjAsMTI3LjUgMTQ1LDEzNSAxMzAsMTI3LjUgMTMwLDExMi41IiBjbGFzcz0iaGV4YWdvbiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMTAwLDE1MCAxMTUsMTU3LjUgMTE1LDE3Mi41IDEwMCwxODAgODUsMTcyLjUgODUsMTU3LjUiIGNsYXNzPSJoZXhhZ29uIi8+CiAgPHBvbHlnb24gcG9pbnRzPSI1NSwxMDUgNzAsMTEyLjUgNzAsMTI3LjUgNTUsMTM1IDQwLDEyNy41IDQwLDExMi41IiBjbGFzcz0iaGV4YWdvbiIvPgogIDxwb2x5Z29uIHBvaW50cz0iNTUsNDUgNzAsNTIuNSA3MCw2Ny41IDU1LDc1IDQwLDY3LjUgNDAsNTIuNSIgY2xhc3M9ImhleGFnb24iLz4KPC9zdmc+'}
+                                alt={`${label} collage style`}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  // Fallback to CSS preview if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const fallback = target.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'block';
+                                }}
+                              />
+                              {/* CSS Fallback Preview */}
+                              <div 
+                                className="absolute inset-0 flex items-center justify-center"
+                                style={{ display: 'none' }}
+                              >
+                                {style === 'hexagonal' && (
+                                  <div className="relative w-full h-32 flex items-center justify-center">
+                                    <div className="border-2 border-primary bg-primary/5 w-12 h-12" style={{
+                                      clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+                                    }} />
+                                    {[0, 1, 2, 3, 4, 5].map((i) => {
+                                      const angle = (Math.PI / 3) * i;
+                                      const x = 20 * Math.cos(angle);
+                                      const y = 20 * Math.sin(angle);
+                                      return (
+                                        <div
+                                          key={i}
+                                          className="border-2 border-primary bg-primary/5 w-6 h-6 absolute"
+                                          style={{
+                                            clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                                            transform: `translate(${x}px, ${y}px)`
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                {style === 'square' && (
+                                  <div className="relative w-full h-32 flex items-center justify-center">
+                                    <div className="grid grid-cols-4 gap-1 w-20 h-20">
+                                      {[...Array(16)].map((_, i) => {
+                                        const isCenter = (i === 5 || i === 6 || i === 9 || i === 10);
+                                        if (isCenter && i === 5) {
+                                          return (
+                                            <div
+                                              key={i}
+                                              className="border-2 border-primary bg-primary/5 col-span-2 row-span-2"
+                                              style={{ position: 'relative', gridColumn: '2 / 4', gridRow: '2 / 4' }}
+                                            />
+                                          );
+                                        }
+                                        if (isCenter) return <div key={i} />;
+                                        return <div key={i} className="border-2 border-primary bg-primary/5 w-4 h-4" />;
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                {style === 'circular' && (
+                                  <div className="relative w-full h-32 flex items-center justify-center">
+                                    <div className="border-2 border-primary bg-primary/5 w-10 h-10 rounded-full" />
+                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+                                      const angle = (Math.PI * 2 * i) / 8;
+                                      const x = 18 * Math.cos(angle);
+                                      const y = 18 * Math.sin(angle);
+                                      return (
+                                        <div
+                                          key={i}
+                                          className="border-2 border-primary bg-primary/5 w-5 h-5 rounded-full absolute"
+                                          style={{
+                                            transform: `translate(${x}px, ${y}px)`
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <h4 className="font-medium text-sm">{label}</h4>
+                              
+                              <div className="space-y-1">
+                                <div className="text-xs text-muted-foreground">
+                                  {project?.votes[style] || 0} votes ({getPercentage(style)}%)
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5">
+                                  <div 
+                                    className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                                    style={{ width: `${getPercentage(style)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {formData.collageStyle === style && (
+                            <div className="absolute -top-2 -right-2">
+                              <div className="bg-primary rounded-full p-1">
+                                <Check className="w-4 h-4 text-primary-foreground" />
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                       {!hasVoted && (
                         <Button
                           variant="outline"

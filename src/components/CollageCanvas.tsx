@@ -10,8 +10,6 @@ import { useImageUploader } from './ImageUploader';
 import { Polygon, Circle, Rect } from 'fabric';
 import Layout from './Layout';
 import { DesignSidebar } from './DesignSidebar';
-import { UploadSection } from './UploadSection';
-import { PreviewButton } from './PreviewButton';
 import * as fabric from 'fabric';
 
 interface CollageCanvasProps {
@@ -113,103 +111,6 @@ export function fitImageToCell(img: any, cell: GridCell) {
   }
 }
 
-// Helper to add a full collage image to the canvas
-function addCollageImageToCanvas(fabricCanvas: FabricCanvas, imageUrl: string, fileName: string) {
-  try {
-    console.log('Starting image load process:', { imageUrl, fileName });
-    
-    // Clear any existing collage images first
-    const objects = fabricCanvas.getObjects();
-    console.log('Current canvas objects:', objects.length);
-    
-    objects.forEach((obj: any) => {
-      if (obj.collageImage) {
-        console.log('Removing existing collage image');
-        fabricCanvas.remove(obj);
-      }
-    });
-
-    // Load image directly with Fabric.js
-    (fabric.Image.fromURL as any)(imageUrl, (fabricImage: fabric.Image) => {
-      console.log('Image loaded successfully:', fabricImage);
-      
-      if (!fabricImage) {
-        console.error('Failed to create Fabric image object');
-        toast({
-          title: "Error",
-          description: "Failed to load the image. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Calculate scale to fit the canvas while maintaining aspect ratio
-      const canvasWidth = fabricCanvas.width || 700;
-      const canvasHeight = fabricCanvas.height || 700;
-      
-      const scaleX = canvasWidth / (fabricImage.width ?? 1);
-      const scaleY = canvasHeight / (fabricImage.height ?? 1);
-      const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of max size to leave some margin
-      
-      console.log('Calculated image dimensions:', {
-        canvasWidth,
-        canvasHeight,
-        imageWidth: fabricImage.width,
-        imageHeight: fabricImage.height,
-        scale
-      });
-
-      // Set image properties
-      fabricImage.set({
-        left: canvasWidth / 2,
-        top: canvasHeight / 2,
-        originX: 'center',
-        originY: 'center',
-        scaleX: scale,
-        scaleY: scale,
-        selectable: true,
-        hasControls: true,
-        hasBorders: true,
-        evented: true,
-        crossOrigin: 'anonymous'
-      });
-
-      // Add custom properties
-      (fabricImage as any).collageImage = true;
-      (fabricImage as any).fileName = fileName;
-      
-      // Add to canvas
-      fabricCanvas.add(fabricImage);
-      fabricCanvas.setActiveObject(fabricImage);
-      
-      // Ensure the image is rendered
-      fabricImage.setCoords();
-      fabricCanvas.requestRenderAll();
-
-      console.log('Image added to canvas:', {
-        position: { left: fabricImage.left, top: fabricImage.top },
-        scale: { x: fabricImage.scaleX, y: fabricImage.scaleY },
-        dimensions: { width: fabricImage.width, height: fabricImage.height }
-      });
-
-      toast({
-        title: "Collage Added!",
-        description: `${fileName} has been added to the canvas. You can resize and reposition it.`,
-      });
-    }, {
-      crossOrigin: 'anonymous'
-    });
-
-  } catch (error) {
-    console.error('Error in addCollageImageToCanvas:', error);
-    toast({
-      title: "Error",
-      description: "Failed to add the image to the canvas. Please try again.",
-      variant: "destructive",
-    });
-  }
-}
-
 type Mode = 'upload' | 'adjust';
 
 interface ContextMenu {
@@ -251,40 +152,6 @@ export const CollageCanvas = ({ tshirtImage, mode = 'upload', onModeChange }: Co
 
   const { createHexagonalGrid, createSquareGrid, createCenterFocusGrid } = useGridTemplates();
   const { uploadImageToCell } = useImageUploader();
-
-  // Handle image selection from UploadSection
-  const handleImageSelect = useCallback((imageUrl: string, fileName: string) => {
-    console.log('Image selected:', { imageUrl, fileName });
-    
-    if (!fabricCanvas) {
-      console.error('Canvas not initialized');
-      toast({
-        title: "Error",
-        description: "Canvas not ready. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!imageUrl) {
-      console.error('Invalid image URL');
-      toast({
-        title: "Error",
-        description: "Invalid image URL. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('Adding image to canvas:', {
-      canvasWidth: fabricCanvas.width,
-      canvasHeight: fabricCanvas.height,
-      imageUrl,
-      fileName
-    });
-
-    addCollageImageToCanvas(fabricCanvas, imageUrl, fileName);
-  }, [fabricCanvas]);
 
   const createGrid = useCallback((gridType: GridType) => {
     if (!fabricCanvas) return [];
@@ -677,7 +544,6 @@ export const CollageCanvas = ({ tshirtImage, mode = 'upload', onModeChange }: Co
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    console.log('Initializing canvas');
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 700,
       height: 700,
@@ -685,16 +551,9 @@ export const CollageCanvas = ({ tshirtImage, mode = 'upload', onModeChange }: Co
       selection: false,
     });
 
-    console.log('Canvas initialized:', {
-      width: canvas.width,
-      height: canvas.height,
-      el: canvas.getElement()
-    });
-
     setFabricCanvas(canvas);
 
     return () => {
-      console.log('Disposing canvas');
       canvas.dispose();
     };
   }, []);
@@ -702,89 +561,194 @@ export const CollageCanvas = ({ tshirtImage, mode = 'upload', onModeChange }: Co
   return (
     <Layout>
       <div className='flex flex-row gap-4 w-full'>
+      {/* Grid Template Selector */}
+      {/* <GridSelector
+        selectedGrid={selectedGrid}
+        onGridSelect={setSelectedGrid}
+        onShowGrid={() => {
+          // This function is now handled by the useEffect that calls showGrid
+          // We just need to trigger the effect to regenerate the grid
+        }}
+        onClearGrid={clearGrid}
+        isGridVisible={isGridVisible}
+        hexColumns={hexColumns}
+        hexRows={hexRows}
+        squareRows={squareRows}
+        squareColumns={squareColumns}
+        circleCount={circleCount}
+        focusCount={focusCount}
+        onHexColumnsChange={setHexColumns}
+        onHexRowsChange={setHexRows}
+        onSquareRowsChange={setSquareRows}
+        onSquareColumnsChange={setSquareColumns}
+        onCircleCountChange={setCircleCount}
+        onFocusCountChange={setFocusCount}
+      /> */}
         <div className='w-1/4'>
-          <DesignSidebar
-            selectedTool="background"
-            onToolChange={() => {}}
-            onDownload={handleExport}
-          />
+        <DesignSidebar
+          selectedGrid={selectedGrid}
+          onGridSelect={handleGridSelect}
+          onShowGrid={() => {}}
+          onClearGrid={clearGrid}
+          isGridVisible={isGridVisible}
+          hexColumns={hexColumns}
+          hexRows={hexRows}
+          squareRows={squareRows}
+          squareColumns={squareColumns}
+          focusCount={focusCount}
+          onHexColumnsChange={setHexColumns}
+          onHexRowsChange={setHexRows}
+          onSquareRowsChange={setSquareRows}
+          onSquareColumnsChange={setSquareColumns}
+          onFocusCountChange={setFocusCount}
+          fabricCanvas={fabricCanvas}
+          backgroundType={backgroundType}
+          setBackgroundType={setBackgroundType}
+          backgroundColor={backgroundColor}
+          setBackgroundColor={setBackgroundColor}
+          backgroundGradient={backgroundGradient}
+          setBackgroundGradient={setBackgroundGradient}
+          backgroundPattern={backgroundPattern}
+          setBackgroundPattern={setBackgroundPattern}
+          backgroundOpacity={backgroundOpacity}
+          setBackgroundOpacity={setBackgroundOpacity}
+          backgroundBlur={backgroundBlur}
+          setBackgroundBlur={setBackgroundBlur}
+          uploadedBackgrounds={uploadedBackgrounds}
+          setUploadedBackgrounds={setUploadedBackgrounds}
+          selectedBackgroundImage={selectedBackgroundImage}
+          setSelectedBackgroundImage={setSelectedBackgroundImage}
+          onModeChange={onModeChange}
+          currentMode={mode}
+        />
         </div>
 
-        <div className="w-3/4">
-          {/* Canvas Container */}
-          <Card className="p-6 bg-gradient-card shadow-elegant">
-            <div className="flex flex-col items-center space-y-4">
-              <div className='flex w-full justify-center'> 
-                <h3 className='text-2xl flex-start font-semibold text-foreground mr-25'>
-                  Create Your Photo Collage
-                </h3> 
-              </div>
-              
-              {!isGridVisible ? (
-                <p className="text-sm text-muted-foreground text-center">
-                  Select a grid template above and click "Show Grid" to start creating your collage, or upload a pre-built collage image.
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center">
-                  {mode === 'upload' 
-                    ? "Click on any grid cell to upload a photo, or use the upload section to add pre-built collages."
-                    : "Click and drag cells to adjust their position and size. Right-click for more options."
-                  }
-                </p>
+    <div className="w-3/4">
+      {/* Mode Toggle Button */}
+      
+      
+
+      {/* Export Toolbar */}
+      {/* {isGridVisible && (
+        <Card className="p-4 bg-gradient-card">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-muted-foreground">
+              Grid: {selectedGrid} • Cells: {gridCells.length}
+              {selectedGrid === 'hexagonal' && (
+                <span className="ml-2">• Columns: {hexColumns}</span>
               )}
-              
-              <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50 relative">
-                <canvas 
-                  ref={canvasRef} 
-                  className="border border-border rounded-lg shadow-sm"
-                />
-                
-                {/* Context Menu */}
-                {contextMenu.visible && mode === 'adjust' && (
-                  <div 
-                    className="absolute bg-background border border-border rounded-lg shadow-lg z-50 min-w-[150px]"
-                    style={{ 
-                      left: contextMenu.x, 
-                      top: contextMenu.y 
+              {selectedCellIndex !== null && (
+                <span className="ml-2 text-primary font-medium">
+                  Selected: Cell {selectedCellIndex + 1}
+                </span>
+              )}
+            </div>
+            <Button variant="hero" size="sm" onClick={handleExport}>
+              <Download className="w-4 h-4" />
+              Export Design
+            </Button>
+          </div>
+        </Card>
+      )} */}
+
+      {/* Canvas Container */}
+      <Card className="p-6 bg-gradient-card shadow-elegant">
+        <div className="flex flex-col items-center space-y-4">
+        <div className='flex justify-end gap-2 w-full'>
+          {/* <div className="text-sm text-muted-foreground">
+            Current Mode: <span className="font-medium capitalize">{mode}</span>
+          </div> */}
+        </div>
+        <div className='flex w-full justify-center'> 
+        <h3 className='text-2xl flex-start font-semibold text-foreground mr-25'>
+          Create Your Photo Collage
+        </h3> 
+        </div>
+          
+          {!isGridVisible ? (
+            <p className="text-sm text-muted-foreground text-center">
+              Select a grid template above and click "Show Grid" to start creating your collage.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center">
+              {mode === 'upload' 
+                ? "Click on any grid cell to upload a photo. Each image will be perfectly fitted to its shape."
+                : "Click and drag cells to adjust their position and size. Right-click for more options."
+              }
+            </p>
+          )}
+          
+          <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background/50 relative">
+            <canvas 
+              ref={canvasRef} 
+              className="border border-border rounded-lg shadow-sm"
+            />
+            
+            {/* Context Menu */}
+            {contextMenu.visible && mode === 'adjust' && (
+              <div 
+                className="absolute bg-background border border-border rounded-lg shadow-lg z-50 min-w-[150px]"
+                style={{ 
+                  left: contextMenu.x, 
+                  top: contextMenu.y 
+                }}
+              >
+                <div className="p-1">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
+                    onClick={() => {
+                      addCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
                     }}
                   >
-                    <div className="p-1">
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
-                        onClick={() => {
-                          addCell(contextMenu.cellIndex);
-                          setContextMenu(prev => ({ ...prev, visible: false }));
-                        }}
-                      >
-                        Add Cell
-                      </button>
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
-                        onClick={() => {
-                          duplicateCell(contextMenu.cellIndex);
-                          setContextMenu(prev => ({ ...prev, visible: false }));
-                        }}
-                      >
-                        Duplicate Cell
-                      </button>
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm text-destructive"
-                        onClick={() => {
-                          deleteCell(contextMenu.cellIndex);
-                          setContextMenu(prev => ({ ...prev, visible: false }));
-                        }}
-                      >
-                        Delete Cell
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    Add Cell
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm"
+                    onClick={() => {
+                      duplicateCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    Duplicate Cell
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded-sm text-destructive"
+                    onClick={() => {
+                      deleteCell(contextMenu.cellIndex);
+                      setContextMenu(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    Delete Cell
+                  </button>
+                </div>
               </div>
-              <PreviewButton fabricCanvas={fabricCanvas} />
-            </div>
-          </Card>
+            )}
+          </div>
         </div>
-      </div>
+      </Card>
+
+      {/* Instructions */}
+      {/* {isGridVisible && (
+        <Card className="p-4 bg-muted/50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-primary rounded-full"></span>
+              <span>Click cells to upload individual photos</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-accent rounded-full"></span>
+              <span>Images automatically fit cell shapes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-secondary rounded-full"></span>
+              <span>Export when your design is complete</span>
+            </div>
+          </div>
+        </Card>
+      )} */}
+    </div>
+    </div>
     </Layout>
   );
 };

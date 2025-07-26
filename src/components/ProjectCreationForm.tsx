@@ -177,7 +177,7 @@ export const ProjectCreationForm = () => {
               </p>
             </div>
 
-            {/* Grid Style */}
+            {/* Grid Style
             <div className="space-y-2">
               <Label htmlFor="gridStyle" className="text-sm font-medium">
                 {copy.form.gridStyle.label}
@@ -197,7 +197,7 @@ export const ProjectCreationForm = () => {
               <p className="text-xs text-muted-foreground">
                 {copy.form.gridStyle.helper}
               </p>
-            </div>
+            </div> */}
 
             {/* School Logo Upload */}
             <div className="space-y-2">
