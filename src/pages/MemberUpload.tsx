@@ -5,6 +5,9 @@ const MemberUpload = () => {
   const [params] = useSearchParams();
   const projectId = params.get('projectId') || 'demo-project-id';
   const groupName = params.get('groupName') || 'Demo Group';
-  return <MemberUploadForm projectId={projectId} groupName={groupName} />;
+  const occasion = params.get('occasion') || 'Other celebration';
+  
+  return <MemberUploadForm projectId={projectId} groupName={groupName} occasion={occasion} />;
 };
+
 export default MemberUpload; 

@@ -6,10 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Heart, Users, Sparkles } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Upload, Heart, Users, Sparkles, AlertCircle } from 'lucide-react';
 import { uxCopy } from '@/content/uxCopy';
+import { useNavigate } from 'react-router-dom';
+import { storageService } from '@/lib/storage';
+import { Project, VoteData } from '@/lib/types';
 
 export const ProjectCreationForm = () => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     groupName: '',
     occasion: '',
@@ -20,15 +27,63 @@ export const ProjectCreationForm = () => {
 
   const copy = uxCopy.projectCreation;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Creating project with:', formData);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Generate project ID
+      const projectId = storageService.generateId();
+      
+      // Convert school logo to base64 if exists
+      let schoolLogoBase64 = '';
+      if (formData.schoolLogo) {
+        schoolLogoBase64 = await storageService.convertFileToBase64(formData.schoolLogo);
+      }
+      
+      // Create project object
+      const project: Project = {
+        id: projectId,
+        groupName: formData.groupName,
+        occasion: formData.occasion,
+        memberCount: parseInt(formData.memberCount),
+        gridStyle: formData.gridStyle as any,
+        schoolLogo: schoolLogoBase64,
+        createdAt: new Date().toISOString(),
+        submissions: [],
+        votes: {
+          hexagonal: 0,
+          square: 0,
+          circular: 0
+        }
+      };
+      
+      // Save to localStorage
+      const success = storageService.saveProject(project);
+      
+      if (success) {
+        // Navigate to projects list
+        navigate('/my-projects');
+      } else {
+        setError('Failed to save project. Your browser storage might be full. Please try clearing some data or use a smaller image.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred while creating your project. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image file is too large. Please select an image smaller than 5MB.');
+        return;
+      }
+      setError(null);
       setFormData(prev => ({ ...prev, schoolLogo: file }));
     }
   };
@@ -61,6 +116,13 @@ export const ProjectCreationForm = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             {/* Group Name */}
             <div className="space-y-2">
               <Label htmlFor="groupName" className="text-sm font-medium">
@@ -172,10 +234,10 @@ export const ProjectCreationForm = () => {
               type="submit" 
               className="w-full" 
               size="lg"
-              disabled={!formData.groupName || !formData.occasion || !formData.memberCount}
+              disabled={!formData.groupName || !formData.occasion || !formData.memberCount || isLoading}
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              {copy.cta}
+              {isLoading ? 'Creating project...' : copy.cta}
             </Button>
           </form>
         </CardContent>

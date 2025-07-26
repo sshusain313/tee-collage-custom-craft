@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,99 +16,63 @@ import {
   Mail,
   MessageSquare,
   Vote,
-  Trophy
+  Trophy,
+  Link as LinkIcon
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { CollageStyleCard, CollageStyle } from './CollageStyleCard';
-
-interface MemberSubmission {
-  id: string;
-  name: string;
-  role?: string;
-  message?: string;
-  photoUrl?: string;
-  submittedAt: Date;
-  collageStyleVote?: CollageStyle;
-}
-
-interface VoteData {
-  hexagonal: number;
-  square: number;
-  circular: number;
-}
+import { CollageStyle } from './CollageStyleCard';
+import { storageService } from '@/lib/storage';
+import { Project, MemberSubmission } from '@/lib/types';
+import { useParams, useNavigate } from 'react-router-dom';
 
 export const ProjectDashboard = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [project, setProject] = useState<Project | null>(null);
   
-  // Mock data - in real app this would come from API
-  const projectData = {
-    id: 'proj_123',
-    name: 'CS Dept Batch 2025',
-    occasion: 'Graduation farewell',
-    totalMembers: 25,
-    shareLink: 'https://teecollage.com/upload?projectId=proj_123',
-    createdAt: new Date('2025-01-15'),
-  };
+  useEffect(() => {
+    if (!projectId) {
+      navigate('/');
+      return;
+    }
 
-  const voteData: VoteData = {
-    hexagonal: 12,
-    square: 8,
-    circular: 5
-  };
+    const loadedProject = storageService.getProject(projectId);
+    if (!loadedProject) {
+      navigate('/');
+      return;
+    }
+    setProject(loadedProject);
+  }, [projectId, navigate]);
 
-  const totalVotes = voteData.hexagonal + voteData.square + voteData.circular;
+  if (!project) {
+    return null; // Or loading state
+  }
+
+  const submissionRate = (project.submissions.length / project.memberCount) * 100;
+  const remainingCount = project.memberCount - project.submissions.length;
+  const totalVotes = project.votes.hexagonal + project.votes.square + project.votes.circular;
   const getPercentage = (count: number) => totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-  
-  const getWinningStyle = (): CollageStyle => {
-    const styles: Array<{ style: CollageStyle; votes: number }> = [
-      { style: 'hexagonal', votes: voteData.hexagonal },
-      { style: 'square', votes: voteData.square },
-      { style: 'circular', votes: voteData.circular }
-    ];
-    return styles.sort((a, b) => b.votes - a.votes)[0].style;
-  };
-
-  const submissions: MemberSubmission[] = [
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      role: 'Class President',
-      message: 'Thanks for the amazing memories everyone! 🎓',
-      photoUrl: '/placeholder.svg',
-      submittedAt: new Date('2025-01-20T10:30:00'),
-      collageStyleVote: 'hexagonal'
-    },
-    {
-      id: '2',
-      name: 'Mike Chen',
-      role: 'Study Group Leader',
-      message: 'Four years flew by so fast!',
-      photoUrl: '/placeholder.svg',
-      submittedAt: new Date('2025-01-20T14:15:00'),
-      collageStyleVote: 'square'
-    },
-    {
-      id: '3',
-      name: 'Emily Rodriguez',
-      message: 'Love you all! Keep in touch 💕',
-      photoUrl: '/placeholder.svg',
-      submittedAt: new Date('2025-01-21T09:45:00'),
-      collageStyleVote: 'hexagonal'
-    },
-  ];
-
-  const submissionRate = (submissions.length / projectData.totalMembers) * 100;
-  const remainingCount = projectData.totalMembers - submissions.length;
 
   const collageStyles = [
     { style: 'hexagonal' as CollageStyle, label: 'Hexagonal' },
     { style: 'square' as CollageStyle, label: 'Square Grid' },
     { style: 'circular' as CollageStyle, label: 'Circular' }
   ];
+  
+  const getWinningStyle = (): CollageStyle => {
+    const styles: Array<{ style: CollageStyle; votes: number }> = [
+      { style: 'hexagonal', votes: project.votes.hexagonal },
+      { style: 'square', votes: project.votes.square },
+      { style: 'circular', votes: project.votes.circular }
+    ];
+    return styles.sort((a, b) => b.votes - a.votes)[0].style;
+  };
 
   const handleShareLink = () => {
-    navigator.clipboard.writeText(projectData.shareLink);
+    const shareLink = `${window.location.origin}/upload-member?projectId=${project.id}&groupName=${encodeURIComponent(project.groupName)}&occasion=${encodeURIComponent(project.occasion)}`;
+    navigator.clipboard.writeText(shareLink);
     toast({
       title: "Link copied! ✨",
       description: "Share it with your group members",
@@ -116,6 +80,17 @@ export const ProjectDashboard = () => {
   };
 
   const handleDownloadSubmissions = () => {
+    const data = JSON.stringify(project.submissions, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.groupName}-submissions.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     toast({
       title: "Download started",
       description: "Your submissions export is being prepared",
@@ -123,6 +98,7 @@ export const ProjectDashboard = () => {
   };
 
   const handleStartCollageEditor = () => {
+    navigate(`/editor/${project.id}`);
     toast({
       title: "Starting collage editor",
       description: "Taking you to the design studio...",
@@ -130,7 +106,7 @@ export const ProjectDashboard = () => {
   };
 
   const getEncouragementMessage = () => {
-    if (submissions.length === 0) {
+    if (project.submissions.length === 0) {
       return "Share the link to get started! 🚀";
     }
     if (remainingCount === 0) {
@@ -139,7 +115,7 @@ export const ProjectDashboard = () => {
     if (remainingCount <= 3) {
       return `Great! Just ${remainingCount} more to go! 🎉`;
     }
-    return `${submissions.length} memories collected so far! Keep them coming 💫`;
+    return `${project.submissions.length} memories collected so far! Keep them coming 💫`;
   };
 
   return (
@@ -153,12 +129,51 @@ export const ProjectDashboard = () => {
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          {projectData.name}
+          {project.groupName}
         </h1>
         <p className="text-lg text-muted-foreground">
-          {projectData.occasion}
+          {project.occasion}
         </p>
       </div>
+
+      {/* Share Section - Shown prominently when no submissions */}
+      {project.submissions.length === 0 && (
+        <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center">
+              <LinkIcon className="w-8 h-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Share with Your Group</h2>
+              <p className="text-muted-foreground">
+                Get started by sharing the upload link with your {project.memberCount} group members
+              </p>
+            </div>
+            <div className="flex justify-center gap-4">
+              <Button 
+                onClick={handleShareLink} 
+                size="lg"
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Upload Link
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="gap-2"
+                onClick={() => {
+                  const shareLink = `${window.location.origin}/upload-member?projectId=${project.id}&groupName=${encodeURIComponent(project.groupName)}&occasion=${encodeURIComponent(project.occasion)}`;
+                  window.open(`mailto:?subject=Join our ${project.occasion} collage&body=Click this link to upload your photo: ${shareLink}`);
+                }}
+              >
+                <Mail className="w-4 h-4" />
+                Share via Email
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progress Overview and Voting Results */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -173,7 +188,7 @@ export const ProjectDashboard = () => {
           <CardContent className="space-y-6">
             <div className="text-center space-y-4">
               <div className="text-3xl font-bold">
-                {submissions.length} of {projectData.totalMembers}
+                {project.submissions.length} of {project.memberCount}
               </div>
               <Progress value={submissionRate} className="h-3" />
               <p className="text-lg text-muted-foreground">
@@ -187,10 +202,12 @@ export const ProjectDashboard = () => {
                 <Share2 className="w-4 h-4" />
                 Share Link Again
               </Button>
-              <Button onClick={handleDownloadSubmissions} variant="outline" className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Download Submissions
-              </Button>
+              {project.submissions.length > 0 && (
+                <Button onClick={handleDownloadSubmissions} variant="outline" className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Download Submissions
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -223,13 +240,13 @@ export const ProjectDashboard = () => {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-sm">{label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{voteData[style]} votes</span>
+                        <span className="text-sm font-medium">{project.votes[style]} votes</span>
                         <Badge variant="secondary" className="text-xs">
-                          {getPercentage(voteData[style])}%
+                          {getPercentage(project.votes[style])}%
                         </Badge>
                       </div>
                     </div>
-                    <Progress value={getPercentage(voteData[style])} className="h-2" />
+                    <Progress value={getPercentage(project.votes[style])} className="h-2" />
                   </div>
                 </div>
               ))}
@@ -239,7 +256,7 @@ export const ProjectDashboard = () => {
               onClick={handleStartCollageEditor} 
               variant="creative" 
               className="w-full flex items-center gap-2"
-              disabled={submissions.length === 0}
+              disabled={project.submissions.length === 0}
             >
               <Palette className="w-4 h-4" />
               Start Collage Editor
@@ -275,7 +292,7 @@ export const ProjectDashboard = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {submissions.length === 0 ? (
+          {project.submissions.length === 0 ? (
             <div className="text-center py-12 space-y-4">
               <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center">
                 <Users className="w-8 h-8 text-muted-foreground" />
@@ -293,12 +310,12 @@ export const ProjectDashboard = () => {
             </div>
           ) : (
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-              {submissions.map((submission) => (
+              {project.submissions.map((submission) => (
                 <Card key={submission.id} className="bg-background/50 hover:bg-background/70 transition-colors">
                   <CardContent className="p-4">
                     <div className={`flex ${viewMode === 'grid' ? 'flex-col' : 'flex-row'} gap-4`}>
                       <Avatar className={viewMode === 'grid' ? 'w-16 h-16 mx-auto' : 'w-12 h-12'}>
-                        <AvatarImage src={submission.photoUrl} alt={submission.name} />
+                        <AvatarImage src={submission.photo} alt={submission.name} />
                         <AvatarFallback>{submission.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                       </Avatar>
                       
@@ -311,9 +328,9 @@ export const ProjectDashboard = () => {
                                 {submission.role}
                               </Badge>
                             )}
-                            {submission.collageStyleVote && (
+                            {submission.collageStyle && (
                               <Badge variant="outline" className="text-xs">
-                                Voted: {collageStyles.find(s => s.style === submission.collageStyleVote)?.label}
+                                Voted: {collageStyles.find(s => s.style === submission.collageStyle)?.label}
                               </Badge>
                             )}
                           </div>
@@ -330,7 +347,7 @@ export const ProjectDashboard = () => {
                         
                         <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                           <Clock className="w-3 h-3" />
-                          {submission.submittedAt.toLocaleDateString()} at {submission.submittedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(submission.submittedAt).toLocaleDateString()} at {new Date(submission.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                     </div>

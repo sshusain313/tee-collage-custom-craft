@@ -4,8 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Heart, Users, Share2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/lib/auth-context';
 
 export const HeroSection = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Layout>
     <section className="py-16 bg-gradient-hero relative overflow-hidden w-full">
@@ -37,16 +40,37 @@ export const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button variant="hero" size="lg" className="text-lg px-8">
-              <Link to="/create-collage">
-              <Users className="w-5 h-5 mr-2" />
-              Start My Project
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20">
-              <Share2 className="w-5 h-5 mr-2" />
-              See How It Works
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="hero" size="lg" className="text-lg px-8">
+                  <Link to="/create-project">
+                    <Users className="w-5 h-5 mr-2" />
+                    Create New Project
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" className="text-lg px-8 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20">
+                  <Link to="/my-projects">
+                    <Share2 className="w-5 h-5 mr-2" />
+                    View My Projects
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="hero" size="lg" className="text-lg px-8">
+                  <Link to="/register">
+                    <Users className="w-5 h-5 mr-2" />
+                    Get Started
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" className="text-lg px-8 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20">
+                  <Link to="/login">
+                    <Share2 className="w-5 h-5 mr-2" />
+                    Sign In
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Process overview */}
@@ -100,7 +124,9 @@ export const HeroSection = () => {
               but the faces you did it with.
             </p>
             <Button variant="hero" size="lg" className="text-lg px-8">
-              Create Our Memory
+              <Link to={isAuthenticated ? "/create-project" : "/register"}>
+                {isAuthenticated ? "Create Our Memory" : "Get Started Today"}
+              </Link>
             </Button>
           </div>
         </div>
