@@ -14,48 +14,33 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { FabricImage } from 'fabric';
 
 interface BackgroundSectionProps {
-  fabricCanvas?: any | null;
-  backgroundType: 'color' | 'gradient' | 'pattern' | 'image';
-  setBackgroundType: (type: 'color' | 'gradient' | 'pattern' | 'image') => void;
   backgroundColor: string;
   setBackgroundColor: (color: string) => void;
-  backgroundGradient: any;
-  setBackgroundGradient: (gradient: any) => void;
-  backgroundPattern: any;
-  setBackgroundPattern: (pattern: any) => void;
-  backgroundOpacity: number[];
-  setBackgroundOpacity: (opacity: number[]) => void;
-  backgroundBlur: number[];
-  setBackgroundBlur: (blur: number[]) => void;
-  uploadedBackgrounds: string[];
-  setUploadedBackgrounds: (urls: string[]) => void;
-  selectedBackgroundImage: string;
-  setSelectedBackgroundImage: (url: string) => void;
+  backgroundGradient: string[];
+  setBackgroundGradient: (gradient: string[]) => void;
+  backgroundPattern: string;
+  setBackgroundPattern: (pattern: string) => void;
+  backgroundImage: string;
+  setBackgroundImage: (image: string) => void;
 }
 
 export const BackgroundSection = ({
-  fabricCanvas,
-  backgroundType,
-  setBackgroundType,
   backgroundColor,
   setBackgroundColor,
   backgroundGradient,
   setBackgroundGradient,
   backgroundPattern,
   setBackgroundPattern,
-  backgroundOpacity,
-  setBackgroundOpacity,
-  backgroundBlur,
-  setBackgroundBlur,
-  uploadedBackgrounds,
-  setUploadedBackgrounds,
-  selectedBackgroundImage,
-  setSelectedBackgroundImage
+  backgroundImage,
+  setBackgroundImage
 }: BackgroundSectionProps) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [backgroundType, setBackgroundType] = useState<'color' | 'gradient' | 'pattern' | 'image'>('color');
+  const [backgroundOpacity, setBackgroundOpacity] = useState([100]);
+  const [backgroundBlur, setBackgroundBlur] = useState([0]);
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
 
   const backgroundTypes = [
     { type: 'color' as const, label: 'Solid Color', icon: Palette },
@@ -80,42 +65,6 @@ export const BackgroundSection = ({
     { name: 'Diagonal', pattern: 'diagonal' },
   ];
 
-  const applyBackground = () => {
-    if (!fabricCanvas) return;
-
-    switch (backgroundType) {
-      case 'color':
-        fabricCanvas.backgroundColor = backgroundColor;
-        break;
-      case 'gradient':
-        // Apply gradient logic here
-        break;
-      case 'image':
-        if (selectedBackgroundImage) {
-          FabricImage.fromURL(selectedBackgroundImage)
-            .then((img: any) => {
-              const canvasWidth = fabricCanvas.width;
-              const canvasHeight = fabricCanvas.height;
-              
-              img.scaleToWidth(canvasWidth);
-              img.scaleToHeight(canvasHeight);
-              img.set({
-                left: 0,
-                top: 0,
-                selectable: false,
-                evented: false,
-              });
-              
-              fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
-            });
-        }
-        break;
-      default:
-        break;
-    }
-    fabricCanvas.renderAll();
-  };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -125,7 +74,7 @@ export const BackgroundSection = ({
       const result = e.target?.result as string;
       if (result) {
         setUploadedBackgrounds([...uploadedBackgrounds, result]);
-        setSelectedBackgroundImage(result);
+        setBackgroundImage(result);
       }
     };
     reader.readAsDataURL(file);
@@ -187,7 +136,7 @@ export const BackgroundSection = ({
                 key={preset.name}
                 variant="outline"
                 size="sm"
-                onClick={() => setBackgroundGradient(preset)}
+                onClick={() => setBackgroundGradient(preset.colors)}
                 className="h-8 p-0 overflow-hidden"
                 style={{
                   background: `linear-gradient(45deg, ${preset.colors[0]}, ${preset.colors[1]})`
@@ -209,7 +158,7 @@ export const BackgroundSection = ({
                 key={preset.name}
                 variant="outline"
                 size="sm"
-                onClick={() => setBackgroundPattern(preset)}
+                onClick={() => setBackgroundPattern(preset.pattern)}
                 className="flex items-center gap-2"
               >
                 <span className="text-xs">{preset.name}</span>
@@ -245,9 +194,9 @@ export const BackgroundSection = ({
                   <Button
                     variant="outline"
                     className={`w-full h-16 p-0 overflow-hidden ${
-                      selectedBackgroundImage === url ? 'ring-2 ring-primary' : ''
+                      backgroundImage === url ? 'ring-2 ring-primary' : ''
                     }`}
-                    onClick={() => setSelectedBackgroundImage(url)}
+                    onClick={() => setBackgroundImage(url)}
                   >
                     <img
                       src={url}
@@ -262,8 +211,8 @@ export const BackgroundSection = ({
                     onClick={() => {
                       const newBgs = uploadedBackgrounds.filter((_, i) => i !== index);
                       setUploadedBackgrounds(newBgs);
-                      if (selectedBackgroundImage === url) {
-                        setSelectedBackgroundImage('');
+                      if (backgroundImage === url) {
+                        setBackgroundImage('');
                       }
                     }}
                   >
@@ -319,7 +268,7 @@ export const BackgroundSection = ({
       </div>
 
       {/* Apply Button */}
-      <Button onClick={applyBackground} className="w-full" variant="creative">
+      <Button className="w-full" variant="creative">
         <Palette className="w-4 h-4 mr-2" />
         Apply Background
       </Button>

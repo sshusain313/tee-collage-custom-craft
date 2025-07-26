@@ -58,7 +58,7 @@ export const DesignSidebar: React.FC<DesignSidebarProps> = ({
           />
         );
       case 'text':
-        return <TextSection />;
+        return <TextSection fabricCanvas={null} />;
       case 'elements':
         return <ElementsSection />;
       default:

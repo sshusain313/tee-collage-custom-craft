@@ -704,47 +704,13 @@ export const CollageCanvas = ({ tshirtImage, mode = 'upload', onModeChange }: Co
       <div className='flex flex-row gap-4 w-full'>
         <div className='w-1/4'>
           <DesignSidebar
-            selectedGrid={selectedGrid}
-            onGridSelect={handleGridSelect}
-            onShowGrid={() => {}}
-            onClearGrid={clearGrid}
-            isGridVisible={isGridVisible}
-            hexColumns={hexColumns}
-            hexRows={hexRows}
-            squareRows={squareRows}
-            squareColumns={squareColumns}
-            focusCount={focusCount}
-            onHexColumnsChange={setHexColumns}
-            onHexRowsChange={setHexRows}
-            onSquareRowsChange={setSquareRows}
-            onSquareColumnsChange={setSquareColumns}
-            onFocusCountChange={setFocusCount}
-            fabricCanvas={fabricCanvas}
-            backgroundType={backgroundType}
-            setBackgroundType={setBackgroundType}
-            backgroundColor={backgroundColor}
-            setBackgroundColor={setBackgroundColor}
-            backgroundGradient={backgroundGradient}
-            setBackgroundGradient={setBackgroundGradient}
-            backgroundPattern={backgroundPattern}
-            setBackgroundPattern={setBackgroundPattern}
-            backgroundOpacity={backgroundOpacity}
-            setBackgroundOpacity={setBackgroundOpacity}
-            backgroundBlur={backgroundBlur}
-            setBackgroundBlur={setBackgroundBlur}
-            uploadedBackgrounds={uploadedBackgrounds}
-            setUploadedBackgrounds={setUploadedBackgrounds}
-            selectedBackgroundImage={selectedBackgroundImage}
-            setSelectedBackgroundImage={setSelectedBackgroundImage}
-            onModeChange={onModeChange}
-            currentMode={mode}
+            selectedTool="background"
+            onToolChange={() => {}}
+            onDownload={handleExport}
           />
         </div>
 
         <div className="w-3/4">
-
-
-        
           {/* Canvas Container */}
           <Card className="p-6 bg-gradient-card shadow-elegant">
             <div className="flex flex-col items-center space-y-4">
