@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Share2, 
   Download, 
@@ -26,7 +27,12 @@ import {
   Star,
   ArrowLeft,
   BarChart3,
-  Activity
+  Activity,
+  Edit3,
+  QrCode,
+  Bell,
+  UserPlus,
+  ThumbsUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CollageStyle } from './CollageStyleCard';
@@ -38,26 +44,153 @@ export const ProjectDashboard = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [project, setProject] = useState<Project | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'analytics'>('overview');
   
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'analytics' | 'activity'>('overview');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activityFeed, setActivityFeed] = useState<Array<{
+    id: string;
+    type: 'submission' | 'vote' | 'join';
+    message: string;
+    timestamp: string;
+    user?: string;
+  }>>([]);
+
+  // Load project data with error handling
+  const loadProjectData = useCallback(() => {
+    if (!projectId) {
+      setError('Project ID is required');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const loadedProject = storageService.getProject(projectId);
+      if (!loadedProject) {
+        setError('Project not found');
+        setLoading(false);
+        return;
+      }
+      
+      setProject(loadedProject);
+      setError(null);
+      
+      // Generate activity feed based on project data
+      generateActivityFeed(loadedProject);
+    } catch (err) {
+      console.error('Error loading project:', err);
+      setError('Failed to load project data');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  // Generate activity feed from project data
+  const generateActivityFeed = (projectData: Project) => {
+    const activities: Array<{
+      id: string;
+      type: 'submission' | 'vote' | 'join';
+      message: string;
+      timestamp: string;
+      user?: string;
+    }> = [];
+
+    // Add submission activities
+    projectData.submissions.forEach((submission) => {
+      activities.push({
+        id: `sub-${submission.id}`,
+        type: 'submission',
+        message: `${submission.name} uploaded their photo`,
+        timestamp: submission.submittedAt,
+        user: submission.name
+      });
+
+      if (submission.hasVoted) {
+        activities.push({
+          id: `vote-${submission.id}`,
+          type: 'vote',
+          message: `${submission.name} voted for ${submission.collageStyle} style`,
+          timestamp: submission.submittedAt,
+          user: submission.name
+        });
+      }
+    });
+
+    // Sort by timestamp (most recent first)
+    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    setActivityFeed(activities.slice(0, 10)); // Keep last 10 activities
+  };
+
+  // Set up polling for real-time updates
+  useEffect(() => {
+    loadProjectData();
+
+    // Poll for updates every 30 seconds
+    const pollInterval = setInterval(() => {
+      loadProjectData();
+    }, 30000);
+
+    // Listen for storage changes (when other tabs update data)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'teecollage_projects') {
+        loadProjectData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadProjectData]);
+
+  // Handle navigation if no project ID
   useEffect(() => {
     if (!projectId) {
       navigate('/my-projects');
-      return;
     }
-
-    const loadedProject = storageService.getProject(projectId);
-    if (!loadedProject) {
-      navigate('/my-projects');
-      return;
-    }
-    setProject(loadedProject);
   }, [projectId, navigate]);
 
-  if (!project) {
-    return null;
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-12 w-96" />
+          <Skeleton className="h-6 w-64" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="max-w-7xl mx-auto p-6">
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 mx-auto bg-destructive/10 rounded-full flex items-center justify-center">
+              <Target className="w-8 h-8 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Project Not Found</h2>
+              <p className="text-muted-foreground">{error || 'The requested project could not be loaded.'}</p>
+            </div>
+            <Button onClick={() => navigate('/my-projects')} className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Projects
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const submissionRate = (project.submissions.length / project.memberCount) * 100;
@@ -92,21 +225,30 @@ export const ProjectDashboard = () => {
   };
 
   const handleDownloadSubmissions = () => {
-    const data = JSON.stringify(project.submissions, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.groupName}-submissions.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const data = JSON.stringify(project.submissions, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.groupName}-submissions.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    toast({
-      title: "Download complete! 📥",
-      description: "All submissions have been exported successfully",
-    });
+      toast({
+        title: "Download complete! 📥",
+        description: "All submissions have been exported successfully",
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download failed",
+        description: "There was an error exporting the submissions",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleStartCollageEditor = () => {
@@ -114,6 +256,24 @@ export const ProjectDashboard = () => {
     toast({
       title: "Opening design studio... 🎨",
       description: "Get ready to create something beautiful!",
+    });
+  };
+
+  const handleEditProject = () => {
+    // Navigate to edit project page or show edit modal
+    toast({
+      title: "Edit feature coming soon! ⚙️",
+      description: "Project editing functionality will be available soon",
+    });
+  };
+
+  const handleGenerateQR = () => {
+    const shareLink = `${window.location.origin}/upload-member?projectId=${project.id}&groupName=${encodeURIComponent(project.groupName)}&occasion=${encodeURIComponent(project.occasion)}`;
+    // For now, just copy the link. QR generation would require additional library
+    navigator.clipboard.writeText(shareLink);
+    toast({
+      title: "QR Code feature coming soon! 📱",
+      description: "Link copied to clipboard for now",
     });
   };
 
@@ -136,7 +296,7 @@ export const ProjectDashboard = () => {
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Enhanced Header */}
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => navigate('/my-projects')}
@@ -145,6 +305,16 @@ export const ProjectDashboard = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleEditProject} className="gap-2">
+              <Edit3 className="w-4 h-4" />
+              Edit Project
+            </Button>
+            <Button onClick={handleShareLink} variant="default" className="gap-2">
+              <Share2 className="w-4 h-4" />
+              Share
+            </Button>
+          </div>
         </div>
 
         <div className="text-center space-y-4">
@@ -171,6 +341,10 @@ export const ProjectDashboard = () => {
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
                 Created {new Date(project.createdAt).toLocaleDateString()}
+              </div>
+              <div className="flex items-center gap-1">
+                <Activity className="w-4 h-4" />
+                Last updated {new Date(Math.max(...project.submissions.map(s => new Date(s.submittedAt).getTime()), new Date(project.createdAt).getTime())).toLocaleDateString()}
               </div>
             </div>
           </div>
@@ -204,6 +378,15 @@ export const ProjectDashboard = () => {
                 variant="outline" 
                 size="lg"
                 className="gap-2"
+                onClick={handleGenerateQR}
+              >
+                <QrCode className="w-5 h-5" />
+                Generate QR Code
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="gap-2"
                 onClick={() => {
                   const shareLink = `${window.location.origin}/upload-member?projectId=${project.id}&groupName=${encodeURIComponent(project.groupName)}&occasion=${encodeURIComponent(project.occasion)}`;
                   window.open(`mailto:?subject=Join our ${project.occasion} memory collage&body=Hi! Please upload your favorite photo for our group collage: ${shareLink}`);
@@ -219,7 +402,7 @@ export const ProjectDashboard = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 bg-gradient-card shadow-elegant">
+        <TabsList className="grid w-full grid-cols-4 bg-gradient-card shadow-elegant">
           <TabsTrigger value="overview" className="gap-2">
             <BarChart3 className="w-4 h-4" />
             Overview
@@ -232,12 +415,16 @@ export const ProjectDashboard = () => {
             <Vote className="w-4 h-4" />
             Voting Results
           </TabsTrigger>
+          <TabsTrigger value="activity" className="gap-2">
+            <Bell className="w-4 h-4" />
+            Activity
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Progress and Stats Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Progress Card */}
+            {/* Enhanced Progress Card */}
             <Card className="bg-gradient-card shadow-elegant">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -251,6 +438,16 @@ export const ProjectDashboard = () => {
                     {project.submissions.length} / {project.memberCount}
                   </div>
                   <Progress value={submissionRate} className="h-4 shadow-inner" />
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-muted/20 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-green-600">{project.submissions.length}</div>
+                      <div className="text-muted-foreground">Submitted</div>
+                    </div>
+                    <div className="bg-muted/20 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-orange-600">{remainingCount}</div>
+                      <div className="text-muted-foreground">Pending</div>
+                    </div>
+                  </div>
                   <p className="text-lg text-muted-foreground">
                     {getEncouragementMessage()}
                   </p>
@@ -271,33 +468,55 @@ export const ProjectDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
+            {/* Enhanced Quick Stats */}
             <Card className="bg-gradient-card shadow-elegant">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="w-5 h-5 text-primary" />
-                  Project Stats
+                  Project Statistics
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="text-center space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center space-y-2 p-4 bg-muted/10 rounded-lg">
                     <div className="text-3xl font-bold text-primary">{project.memberCount}</div>
                     <div className="text-sm text-muted-foreground">Total Members</div>
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-2 p-4 bg-muted/10 rounded-lg">
                     <div className="text-3xl font-bold text-green-600">{project.submissions.length}</div>
                     <div className="text-sm text-muted-foreground">Photos Collected</div>
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-2 p-4 bg-muted/10 rounded-lg">
                     <div className="text-3xl font-bold text-blue-600">{totalVotes}</div>
                     <div className="text-sm text-muted-foreground">Total Votes</div>
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-2 p-4 bg-muted/10 rounded-lg">
                     <div className="text-3xl font-bold text-purple-600">{Math.round(submissionRate)}%</div>
                     <div className="text-sm text-muted-foreground">Complete</div>
                   </div>
                 </div>
+
+                {/* Real-time voting preview */}
+                {totalVotes > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm font-medium">Style Voting Leader</span>
+                    </div>
+                    <div className="bg-muted/20 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {collageStyles.find(s => s.style === getWinningStyle())?.label}
+                        </span>
+                        <Badge variant="secondary">{project.votes[getWinningStyle()]} votes</Badge>
+                      </div>
+                      <Progress 
+                        value={getPercentage(project.votes[getWinningStyle()])} 
+                        className="mt-2 h-2"
+                      />
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -330,15 +549,22 @@ export const ProjectDashboard = () => {
             <Card className="bg-gradient-to-br from-accent/5 to-primary/5 border-accent/20">
               <CardContent className="p-6 text-center space-y-4">
                 <div className="w-12 h-12 mx-auto bg-accent/10 rounded-full flex items-center justify-center">
-                  <Trophy className="w-6 h-6 text-accent" />
+                  <Share2 className="w-6 h-6 text-accent" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Voting Leader</h3>
+                  <h3 className="font-semibold mb-2">Share & Collect</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    {collageStyles.find(s => s.style === getWinningStyle())?.label} style is winning!
+                    Get more members to join and upload their photos
                   </p>
-                  <div className="text-2xl font-bold text-accent">
-                    {project.votes[getWinningStyle()]} votes
+                  <div className="flex gap-2">
+                    <Button onClick={handleShareLink} variant="outline" className="flex-1 gap-2">
+                      <Copy className="w-4 h-4" />
+                      Copy Link
+                    </Button>
+                    <Button onClick={handleGenerateQR} variant="outline" className="gap-2">
+                      <QrCode className="w-4 h-4" />
+                      QR
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -392,15 +618,17 @@ export const ProjectDashboard = () => {
               ) : (
                 <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
                   {project.submissions.map((submission) => (
-                    <Card key={submission.id} className="bg-background/50 hover:bg-background/70 transition-colors shadow-elegant">
+                    <Card key={submission.id} className="bg-background/50 hover:bg-background/70 transition-all duration-200 hover:shadow-md shadow-elegant">
                       <CardContent className="p-4">
                         <div className={`flex ${viewMode === 'grid' ? 'flex-col' : 'flex-row'} gap-4`}>
-                          <Avatar className={viewMode === 'grid' ? 'w-16 h-16 mx-auto' : 'w-12 h-12'}>
-                            <AvatarImage src={submission.photo} alt={submission.name} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
-                              {submission.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
+                          <div className={`${viewMode === 'grid' ? 'self-center' : 'flex-shrink-0'}`}>
+                            <Avatar className={viewMode === 'grid' ? 'w-16 h-16' : 'w-12 h-12'}>
+                              <AvatarImage src={submission.photo} alt={submission.name} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                                {submission.name.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
                           
                           <div className={`flex-1 ${viewMode === 'grid' ? 'text-center' : ''} space-y-2`}>
                             <div>
@@ -413,7 +641,8 @@ export const ProjectDashboard = () => {
                                 )}
                                 {submission.collageStyle && (
                                   <Badge variant="outline" className="text-xs">
-                                    Voted: {collageStyles.find(s => s.style === submission.collageStyle)?.label}
+                                    <ThumbsUp className="w-3 h-3 mr-1" />
+                                    {collageStyles.find(s => s.style === submission.collageStyle)?.label}
                                   </Badge>
                                 )}
                               </div>
@@ -448,7 +677,7 @@ export const ProjectDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Vote className="w-5 h-5 text-primary" />
-                Collage Style Voting Results
+                Real-time Voting Results
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -456,25 +685,37 @@ export const ProjectDashboard = () => {
                 <div className="flex items-center justify-center gap-2">
                   <Trophy className="w-6 h-6 text-yellow-500" />
                   <span className="text-xl font-semibold">
-                    {collageStyles.find(s => s.style === getWinningStyle())?.label} is leading!
+                    {totalVotes > 0 ? (
+                      `${collageStyles.find(s => s.style === getWinningStyle())?.label} is leading!`
+                    ) : (
+                      'No votes cast yet'
+                    )}
                   </span>
                 </div>
                 <div className="text-muted-foreground">
                   Total votes cast: <span className="font-medium">{totalVotes}</span>
+                  {project.submissions.length > 0 && (
+                    <> • Participation rate: <span className="font-medium">
+                      {Math.round((project.submissions.filter(s => s.hasVoted).length / project.submissions.length) * 100)}%
+                    </span></>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 {collageStyles
                   .sort((a, b) => b.votes - a.votes)
-                  .map(({ style, label, votes }) => (
+                  .map(({ style, label, votes }, index) => (
                     <div key={style} className="relative p-4 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          {votes === Math.max(...collageStyles.map(s => s.votes)) && votes > 0 && (
+                          {index === 0 && votes > 0 && (
                             <Star className="w-5 h-5 text-yellow-500" />
                           )}
                           <span className="font-medium text-lg">{label}</span>
+                          {index === 0 && votes > 0 && (
+                            <Badge className="bg-yellow-100 text-yellow-800">Leading</Badge>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold">{votes}</div>
@@ -500,6 +741,68 @@ export const ProjectDashboard = () => {
                   <p className="text-muted-foreground">
                     Members will vote for their preferred collage style when they submit their photos
                   </p>
+                </div>
+              )}
+
+              {totalVotes > 0 && (
+                <div className="mt-6 p-4 bg-accent/10 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="w-4 h-4 text-accent" />
+                    <span className="font-medium">Finalize Style Selection</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Ready to proceed with the {collageStyles.find(s => s.style === getWinningStyle())?.label} style?
+                  </p>
+                  <Button 
+                    onClick={handleStartCollageEditor}
+                    className="w-full gap-2"
+                    disabled={project.submissions.length === 0}
+                  >
+                    <Palette className="w-4 h-4" />
+                    Proceed with {collageStyles.find(s => s.style === getWinningStyle())?.label}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-6">
+          <Card className="bg-gradient-card shadow-elegant">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-primary" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityFeed.length === 0 ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-muted/20 rounded-full flex items-center justify-center">
+                    <Activity className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold">No activity yet</h3>
+                  <p className="text-muted-foreground">
+                    Activity will appear here as members join and interact with the project
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activityFeed.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        {activity.type === 'submission' && <UserPlus className="w-4 h-4 text-primary" />}
+                        {activity.type === 'vote' && <ThumbsUp className="w-4 h-4 text-green-600" />}
+                        {activity.type === 'join' && <Users className="w-4 h-4 text-blue-600" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
