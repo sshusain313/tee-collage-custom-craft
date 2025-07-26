@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,25 +8,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Palette, Upload, Grid, Image as ImageIcon } from 'lucide-react';
 
 export interface BackgroundSectionProps {
+  fabricCanvas?: any | null;
+  backgroundType: 'color' | 'gradient' | 'pattern' | 'image';
+  setBackgroundType: (type: 'color' | 'gradient' | 'pattern' | 'image') => void;
   backgroundColor: string;
-  setBackgroundColor: React.Dispatch<React.SetStateAction<string>>;
-  backgroundGradient: string[];
-  setBackgroundGradient: React.Dispatch<React.SetStateAction<string[]>>;
-  backgroundPattern: string;
-  setBackgroundPattern: React.Dispatch<React.SetStateAction<string>>;
-  backgroundImage: string;
-  setBackgroundImage: React.Dispatch<React.SetStateAction<string>>;
+  setBackgroundColor: (color: string) => void;
+  backgroundGradient: any;
+  setBackgroundGradient: (gradient: any) => void;
+  backgroundPattern: any;
+  setBackgroundPattern: (pattern: any) => void;
+  backgroundOpacity: number[];
+  setBackgroundOpacity: (opacity: number[]) => void;
+  backgroundBlur: number[];
+  setBackgroundBlur: (blur: number[]) => void;
+  uploadedBackgrounds: string[];
+  setUploadedBackgrounds: (urls: string[]) => void;
+  selectedBackgroundImage: string;
+  setSelectedBackgroundImage: (url: string) => void;
 }
 
 export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
+  fabricCanvas,
+  backgroundType,
+  setBackgroundType,
   backgroundColor,
   setBackgroundColor,
   backgroundGradient,
   setBackgroundGradient,
   backgroundPattern,
   setBackgroundPattern,
-  backgroundImage,
-  setBackgroundImage
+  backgroundOpacity,
+  setBackgroundOpacity,
+  backgroundBlur,
+  setBackgroundBlur,
+  uploadedBackgrounds,
+  setUploadedBackgrounds,
+  selectedBackgroundImage,
+  setSelectedBackgroundImage
 }) => {
   return (
     <Card>
@@ -36,7 +55,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="color" className="w-full">
+        <Tabs value={backgroundType} onValueChange={(value) => setBackgroundType(value as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="color">Color</TabsTrigger>
             <TabsTrigger value="gradient">Gradient</TabsTrigger>
@@ -68,7 +87,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <TabsContent value="gradient" className="space-y-4">
             <div className="space-y-2">
               <Label>Gradient Colors</Label>
-              {backgroundGradient.map((color, index) => (
+              {Array.isArray(backgroundGradient) && backgroundGradient.map((color, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <Input
                     type="color"
@@ -125,7 +144,9 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                       if (file) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                          setBackgroundImage(e.target?.result as string);
+                          const url = e.target?.result as string;
+                          setSelectedBackgroundImage(url);
+                          setUploadedBackgrounds([...uploadedBackgrounds, url]);
                         };
                         reader.readAsDataURL(file);
                       }
@@ -138,10 +159,10 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   Upload Image
                 </Button>
               </div>
-              {backgroundImage && (
+              {selectedBackgroundImage && (
                 <div className="mt-2">
                   <img
-                    src={backgroundImage}
+                    src={selectedBackgroundImage}
                     alt="Background preview"
                     className="w-full h-20 object-cover rounded border"
                   />

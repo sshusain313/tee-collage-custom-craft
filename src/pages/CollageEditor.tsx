@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas as FabricCanvas, FabricImage, Circle, Rect, Polygon } from 'fabric';
@@ -358,6 +357,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
     const dataURL = collageCanvas.toDataURL({
       format: 'png',
       quality: 1,
+      multiplier: 1,
     });
     
     const link = document.createElement('a');
