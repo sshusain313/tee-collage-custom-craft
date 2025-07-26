@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import { HeroSection } from "./components/HeroSection";
 import { CollageCanvas } from "./components/CollageCanvas";
 import Checkout from "./pages/Checkout";
 import Preview from "./pages/Preview";
+import CollageEditor from "./pages/CollageEditor";
 import { useState } from "react";
 import { ProjectDashboard } from "./components/ProjectDashboard";
 import { ProjectsList } from "./components/ProjectsList";
@@ -61,6 +63,11 @@ const App = () => {
               <Route path="/my-project/:projectId" element={
                 <ProtectedRoute>
                   <ProjectDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/editor/:projectId" element={
+                <ProtectedRoute>
+                  <CollageEditor />
                 </ProtectedRoute>
               } />
               <Route path="/preview/:projectId" element={
