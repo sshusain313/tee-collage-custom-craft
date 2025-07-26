@@ -87,6 +87,8 @@ interface DesignSidebarProps {
   setUploadedBackgrounds: (urls: string[]) => void;
   selectedBackgroundImage: string;
   setSelectedBackgroundImage: (url: string) => void;
+  onModeChange?: (mode: 'upload' | 'adjust') => void;
+  currentMode?: 'upload' | 'adjust';
 }
 
 export const DesignSidebar = ({
@@ -121,15 +123,32 @@ export const DesignSidebar = ({
   uploadedBackgrounds,
   setUploadedBackgrounds,
   selectedBackgroundImage,
-  setSelectedBackgroundImage
+  setSelectedBackgroundImage,
+  onModeChange,
+  currentMode = 'upload'
 }: DesignSidebarProps) => {
   const [activeSection, setActiveSection] = useState<string>('templates');
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+
+  // Handle section change and mode switching
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId);
+    
+    // Update canvas mode based on section
+    if (onModeChange) {
+      if (sectionId === 'uploads') {
+        onModeChange('upload');
+      } else if (sectionId === 'templates') {
+        onModeChange('adjust');
+      }
+    }
+  };
 
   const sidebarSections = [
     { id: 'templates', label: 'Templates', icon: Grid3X3 },
     { id: 'uploads', label: 'Uploads', icon: Upload },
-    { id: 'elements', label: 'Elements', icon: Layers },
+    { id: 'elements', label: 'Elements', icon: Layers, soon: true },
     { id: 'text', label: 'Text', icon: Type },
     { id: 'background', label: 'Background', icon: Palette },
     { id: 'tools', label: 'Tools', icon: Settings },
@@ -403,13 +422,14 @@ export const DesignSidebar = ({
       case 'templates':
         return renderTemplatesSection();
       case 'uploads':
-        return <UploadSection />;
+        return <UploadSection uploadedFiles={uploadedFiles} setUploadedFiles={setUploadedFiles} />;
       case 'elements':
         return <ElementsSection />;
       case 'text':
         return <TextSection fabricCanvas={fabricCanvas} />;
       case 'background':
         return <BackgroundSection
+          fabricCanvas={fabricCanvas}
           backgroundType={backgroundType}
           setBackgroundType={setBackgroundType}
           backgroundColor={backgroundColor}
@@ -439,25 +459,50 @@ export const DesignSidebar = ({
       {/* Navigation */}
       <div className="w-1/4 bg-muted/20 border-r border-border p-6">
         <div className="space-y-4">
-          {sidebarSections.map(({ id, label, icon: Icon }) => (
-            <Button
-              key={id}
-              variant={activeSection === id ? 'default' : 'ghost'}
-              size="sm"
-              className="w-full h-25 flex flex-col items-center gap-1 p-2"
-              onClick={() => setActiveSection(id)}
-            >
-              <Icon className="w-16 h-16" />
-              <span className="text-sm">{label}</span>
-            </Button>
-          ))}
+          {sidebarSections.map(({ id, label, icon: Icon, soon }) => {
+            const isActive = activeSection === id;
+            const isModeSection = id === 'uploads' || id === 'templates';
+            // const modeIndicator = id === 'uploads' ? '📤' : id === 'templates' ? '⚙️' : '';
+            
+            return (
+              <Button
+                key={id}
+                variant={isActive ? 'default' : 'ghost'}
+                size="sm"
+                className={`w-full h-25 flex flex-col items-center gap-1 p-2 relative ${
+                  isModeSection && isActive ? 'ring-2 ring-primary/20' : ''
+                }`}
+                onClick={() => handleSectionChange(id)}
+              >
+                {soon && (
+                  <Badge className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs">
+                    soon
+                  </Badge>
+                )}
+                <Icon className="w-16 h-16" />
+                <span className="text-sm">{label}</span>
+                {/* {isModeSection && modeIndicator && (
+                  <span className="absolute -bottom-1 -right-1 text-xs bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center">
+                    {modeIndicator}
+                  </span>
+                )} */}
+              </Button>
+            );
+          })}
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="mb-4">
-          <h3 className="text-md font-semibold capitalize">{activeSection}</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-md font-semibold capitalize">{activeSection}</h3>
+            {currentMode && (
+              <Badge variant="secondary" className="text-xs">
+                {currentMode === 'upload' ? '📤 Upload Mode' : '⚙️ Adjust Mode'}
+              </Badge>
+            )}
+          </div>
         </div>
         {renderSectionContent()}
       </div>
