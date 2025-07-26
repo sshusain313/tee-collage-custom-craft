@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Canvas as FabricCanvas, Polygon, Circle, Rect } from 'fabric';
 
@@ -11,6 +12,99 @@ export interface GridCell {
   centerY: number;
   size: number;
   type: GridType;
+}
+
+// Helper to fit an image to a cell's current geometry
+export function fitImageToCell(img: any, cell: GridCell) {
+  // Create clip path based on cell type and current geometry
+  let clipPath;
+  const cellCenter = cell.shape.getCenterPoint ? cell.shape.getCenterPoint() : { x: cell.centerX, y: cell.centerY };
+  const cellWidth = cell.shape.getScaledWidth ? cell.shape.getScaledWidth() : cell.size * 2;
+  const cellHeight = cell.shape.getScaledHeight ? cell.shape.getScaledHeight() : cell.size * 2;
+
+  if (cell.type === 'hexagonal') {
+    const points = [];
+    const hexSize = cellWidth / 2; // Use actual cell width
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      points.push({
+        x: hexSize * Math.cos(angle),
+        y: hexSize * Math.sin(angle)
+      });
+    }
+    clipPath = new Polygon(points, {
+      left: cellCenter.x,
+      top: cellCenter.y,
+      originX: 'center',
+      originY: 'center',
+      absolutePositioned: true
+    });
+  } else if (cell.type === 'center-focus') {
+    clipPath = new Circle({
+      radius: cellWidth / 2,
+      left: cellCenter.x,
+      top: cellCenter.y,
+      originX: 'center',
+      originY: 'center',
+      absolutePositioned: true
+    });
+  } else {
+    clipPath = new Rect({
+      width: cellWidth,
+      height: cellHeight,
+      left: cellCenter.x,
+      top: cellCenter.y,
+      originX: 'center',
+      originY: 'center',
+      absolutePositioned: true
+    });
+  }
+
+  // Calculate scale based on cell type
+  let scale;
+  if (cell.type === 'hexagonal') {
+    scale = Math.max(
+      (cellWidth * 1.2) / img.width,
+      (cellHeight * 1.2) / img.height
+    );
+  } else if (cell.type === 'center-focus') {
+    scale = Math.max(
+      cellWidth / img.width,
+      cellHeight / img.height
+    ) * 1.2;
+  } else {
+    scale = Math.max(
+      cellWidth / img.width,
+      cellHeight / img.height
+    ) * 1.2;
+  }
+
+  // Apply settings
+  img.set({
+    left: cellCenter.x,
+    top: cellCenter.y,
+    originX: 'center',
+    originY: 'center',
+    clipPath: clipPath,
+    scaleX: scale,
+    scaleY: scale,
+    selectable: false,
+    hasControls: false,
+    hasBorders: false,
+    evented: false,
+    hoverCursor: 'pointer',
+    lockRotation: true,
+    lockScalingFlip: true,
+    lockSkewingX: true,
+    lockSkewingY: true,
+    lockRotationControl: true,
+    centeredScaling: true,
+    centeredRotation: true,
+  });
+
+  if (img.setControlsVisibility) {
+    img.setControlsVisibility({ mtr: false });
+  }
 }
 
 export const useGridTemplates = () => {
