@@ -422,7 +422,7 @@ export const DesignSidebar = ({
       case 'templates':
         return renderTemplatesSection();
       case 'uploads':
-        return <UploadSection uploadedFiles={uploadedFiles} setUploadedFiles={setUploadedFiles} />;
+        return <UploadSection />;
       case 'elements':
         return <ElementsSection />;
       case 'text':
@@ -435,13 +435,13 @@ export const DesignSidebar = ({
           backgroundColor={backgroundColor}
           setBackgroundColor={setBackgroundColor}
           backgroundGradient={backgroundGradient}
-          setBackgroundGradient={setBackgroundGradient}
+          setBackgroundGradient={backgroundGradient}
           backgroundPattern={backgroundPattern}
-          setBackgroundPattern={setBackgroundPattern}
+          setBackgroundPattern={backgroundPattern}
           backgroundOpacity={backgroundOpacity}
-          setBackgroundOpacity={setBackgroundOpacity}
+          setBackgroundOpacity={backgroundOpacity}
           backgroundBlur={backgroundBlur}
-          setBackgroundBlur={setBackgroundBlur}
+          setBackgroundBlur={backgroundBlur}
           uploadedBackgrounds={uploadedBackgrounds}
           setUploadedBackgrounds={setUploadedBackgrounds}
           selectedBackgroundImage={selectedBackgroundImage}

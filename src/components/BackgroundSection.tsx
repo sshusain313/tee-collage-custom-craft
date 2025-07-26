@@ -1,60 +1,42 @@
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { 
   Palette, 
-  Image, 
-  Upload, 
-  Grid3X3, 
-  Zap, 
-  Layers,
-  RotateCw,
+  Image as ImageIcon, 
+  Upload,
+  Trash2,
   Eye,
-  EyeOff,
-  Download
+  EyeOff
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import * as fabric from 'fabric';
+import { FabricImage } from 'fabric';
 
-interface BackgroundOption {
-  id: string;
-  name: string;
-  type: 'color' | 'gradient' | 'pattern' | 'image';
-  value: string;
-  preview?: string;
+interface BackgroundSectionProps {
+  fabricCanvas?: any | null;
+  backgroundType: 'color' | 'gradient' | 'pattern' | 'image';
+  setBackgroundType: (type: 'color' | 'gradient' | 'pattern' | 'image') => void;
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
+  backgroundGradient: any;
+  setBackgroundGradient: (gradient: any) => void;
+  backgroundPattern: any;
+  setBackgroundPattern: (pattern: any) => void;
+  backgroundOpacity: number[];
+  setBackgroundOpacity: (opacity: number[]) => void;
+  backgroundBlur: number[];
+  setBackgroundBlur: (blur: number[]) => void;
+  uploadedBackgrounds: string[];
+  setUploadedBackgrounds: (urls: string[]) => void;
+  selectedBackgroundImage: string;
+  setSelectedBackgroundImage: (url: string) => void;
 }
 
-const solidColors = [
-  '#ffffff', '#f8f9fa', '#e9ecef', '#dee2e6', '#ced4da', '#adb5bd',
-  '#6c757d', '#495057', '#343a40', '#212529', '#000000', '#ff6b6b',
-  '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#ff9ff3',
-  '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43', '#ee5a24', '#0abde3'
-];
-
-const gradientPresets = [
-  { id: 'sunset', name: 'Sunset', value: 'linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%)' },
-  { id: 'ocean', name: 'Ocean', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { id: 'forest', name: 'Forest', value: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' },
-  { id: 'purple', name: 'Purple', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { id: 'pink', name: 'Pink', value: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' },
-  { id: 'blue', name: 'Blue', value: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
-];
-
-const patternOptions = [
-  { id: 'dots', name: 'Dots', icon: Grid3X3 },
-  { id: 'stripes', name: 'Stripes', icon: Layers },
-  { id: 'zigzag', name: 'Zigzag', icon: Zap },
-  { id: 'waves', name: 'Waves', icon: RotateCw },
-  { id: 'geometric', name: 'Geometric', icon: Grid3X3 },
-  { id: 'texture', name: 'Texture', icon: Palette },
-];
-
-export const BackgroundSection = ({ 
+export const BackgroundSection = ({
   fabricCanvas,
   backgroundType,
   setBackgroundType,
@@ -72,487 +54,275 @@ export const BackgroundSection = ({
   setUploadedBackgrounds,
   selectedBackgroundImage,
   setSelectedBackgroundImage
-}: { 
-  fabricCanvas?: any;
-  backgroundType?: 'color' | 'gradient' | 'pattern' | 'image';
-  setBackgroundType?: (type: 'color' | 'gradient' | 'pattern' | 'image') => void;
-  backgroundColor?: string;
-  setBackgroundColor?: (color: string) => void;
-  backgroundGradient?: any;
-  setBackgroundGradient?: (gradient: any) => void;
-  backgroundPattern?: any;
-  setBackgroundPattern?: (pattern: any) => void;
-  backgroundOpacity?: number[];
-  setBackgroundOpacity?: (opacity: number[]) => void;
-  backgroundBlur?: number[];
-  setBackgroundBlur?: (blur: number[]) => void;
-  uploadedBackgrounds?: string[];
-  setUploadedBackgrounds?: (urls: string[]) => void;
-  selectedBackgroundImage?: string;
-  setSelectedBackgroundImage?: (url: string) => void;
-}) => {
-  const [selectedType, setSelectedType] = useState<'color' | 'gradient' | 'pattern' | 'image'>('color');
-  const [selectedColor, setSelectedColor] = useState('#ffffff');
-  const [selectedGradient, setSelectedGradient] = useState(gradientPresets[0]);
-  const [selectedPattern, setSelectedPattern] = useState(patternOptions[0]);
-  const [internalBackgroundOpacity, setInternalBackgroundOpacity] = useState([100]);
-  const [internalBackgroundBlur, setInternalBackgroundBlur] = useState([0]);
-  const [internalUploadedBackgrounds, setInternalUploadedBackgrounds] = useState<string[]>([]);
-  const [selectedBackground, setSelectedBackground] = useState<string>('');
+}: BackgroundSectionProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Use props if provided, otherwise use internal state
-  const currentType = backgroundType || selectedType;
-  const setCurrentType = setBackgroundType || setSelectedType;
-  const currentColor = backgroundColor || selectedColor;
-  const setCurrentColor = setBackgroundColor || setSelectedColor;
-  const currentGradient = backgroundGradient || selectedGradient;
-  const setCurrentGradient = setBackgroundGradient || setSelectedGradient;
-  const currentPattern = backgroundPattern || selectedPattern;
-  const setCurrentPattern = setBackgroundPattern || setSelectedPattern;
-  const currentOpacity = backgroundOpacity || internalBackgroundOpacity;
-  const setCurrentOpacity = setBackgroundOpacity || setInternalBackgroundOpacity;
-  const currentBlur = backgroundBlur || internalBackgroundBlur;
-  const setCurrentBlur = setBackgroundBlur || setInternalBackgroundBlur;
-  const currentUploadedBackgrounds = uploadedBackgrounds || internalUploadedBackgrounds;
-  const setCurrentUploadedBackgrounds = setUploadedBackgrounds || setInternalUploadedBackgrounds;
-  const currentSelectedBackground = selectedBackgroundImage || selectedBackground;
-  const setCurrentSelectedBackground = setSelectedBackgroundImage || setSelectedBackground;
+  const backgroundTypes = [
+    { type: 'color' as const, label: 'Solid Color', icon: Palette },
+    { type: 'gradient' as const, label: 'Gradient', icon: Palette },
+    { type: 'pattern' as const, label: 'Pattern', icon: Palette, soon: true },
+    { type: 'image' as const, label: 'Image', icon: ImageIcon },
+  ];
 
-  const handleTypeChange = useCallback((type: 'color' | 'gradient' | 'pattern' | 'image') => {
-    setCurrentType(type);
-    
-    toast({
-      title: "Background Type Changed",
-      description: `Switched to ${type} background`,
-    });
-  }, [setCurrentType]);
+  const gradientPresets = [
+    { name: 'Sunset', colors: ['#ff7e5f', '#feb47b'] },
+    { name: 'Ocean', colors: ['#667eea', '#764ba2'] },
+    { name: 'Forest', colors: ['#11998e', '#38ef7d'] },
+    { name: 'Purple', colors: ['#667eea', '#764ba2'] },
+    { name: 'Pink', colors: ['#f093fb', '#f5576c'] },
+    { name: 'Gold', colors: ['#f7971e', '#ffd200'] },
+  ];
 
-  const handleColorSelect = useCallback((color: string) => {
-    setCurrentColor(color);
-    
-    toast({
-      title: "Color Applied",
-      description: "Background color updated",
-    });
-  }, [setCurrentColor]);
+  const patternPresets = [
+    { name: 'Dots', pattern: 'dots' },
+    { name: 'Lines', pattern: 'lines' },
+    { name: 'Grid', pattern: 'grid' },
+    { name: 'Diagonal', pattern: 'diagonal' },
+  ];
 
-  const handleGradientSelect = useCallback((gradient: typeof gradientPresets[0]) => {
-    setCurrentGradient(gradient);
-    
-    toast({
-      title: "Gradient Applied",
-      description: `${gradient.name} gradient applied`,
-    });
-  }, [setCurrentGradient]);
-
-  const handlePatternSelect = useCallback((pattern: typeof patternOptions[0]) => {
-    setCurrentPattern(pattern);
-    
-    toast({
-      title: "Pattern Applied",
-      description: `${pattern.name} pattern applied`,
-    });
-  }, [setCurrentPattern]);
-
-  const handleImageUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const imageUrl = URL.createObjectURL(file);
-      setCurrentUploadedBackgrounds([...currentUploadedBackgrounds, imageUrl]);
-      setCurrentSelectedBackground(imageUrl);
-      
-      toast({
-        title: "Background Uploaded",
-        description: "Custom background image added",
-      });
-    }
-  }, [currentUploadedBackgrounds, setCurrentUploadedBackgrounds, setCurrentSelectedBackground]);
-
-  const removeBackground = useCallback((imageUrl: string) => {
-    setCurrentUploadedBackgrounds(currentUploadedBackgrounds.filter(url => url !== imageUrl));
-    if (currentSelectedBackground === imageUrl) {
-      setCurrentSelectedBackground('');
-    }
-    
-    toast({
-      title: "Background Removed",
-      description: "Background image deleted",
-    });
-  }, [currentUploadedBackgrounds, currentSelectedBackground, setCurrentUploadedBackgrounds, setCurrentSelectedBackground]);
-
-       const previewStyle = {
-    backgroundColor: currentType === 'color' ? currentColor : 'transparent',
-    backgroundImage: currentType === 'gradient' ? currentGradient.value : 
-                    currentType === 'image' && currentSelectedBackground ? `url(${currentSelectedBackground})` : 'none',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    opacity: currentOpacity[0] / 100,
-    filter: `blur(${currentBlur[0]}px)`,
-  };
-
-     const applyBackgroundToCanvas = useCallback(() => {
+  const applyBackground = () => {
     if (!fabricCanvas) return;
-    
-    // Clear existing background
-    fabricCanvas.backgroundColor = 'transparent';
-    fabricCanvas.backgroundImage = null;
-    
-    // Apply new background based on type
-    if (currentType === 'color') {
-      // For color backgrounds, we need to apply opacity to the color itself
-      const opacity = currentOpacity[0] / 100;
-      const colorWithOpacity = hexToRgba(currentColor, opacity);
-      fabricCanvas.backgroundColor = colorWithOpacity;
-    } else if (currentType === 'gradient') {
-      // For gradient backgrounds, create a Fabric.js gradient object
-      const opacity = currentOpacity[0] / 100;
-      const gradient = createFabricGradient(currentGradient.value, opacity);
-      fabricCanvas.backgroundColor = gradient;
-    } else if (currentType === 'image' && currentSelectedBackground) {
-      // Load image and set as background with opacity
-      (fabric.Image.fromURL as any)(currentSelectedBackground, (img: any) => {
-        img.set({
-          left: 0,
-          top: 0,
-          width: fabricCanvas.width,
-          height: fabricCanvas.height,
-          selectable: false,
-          evented: false,
-          opacity: currentOpacity[0] / 100, // Apply opacity to the image
-        });
-        fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
-      });
-    }
-    
-    // Apply blur filter if needed
-    if (currentBlur[0] > 0) {
-      const blurFilter = new (fabric.Image.filters.Blur as any)({
-        blur: currentBlur[0] / 10
-      });
-      if (fabricCanvas.backgroundImage) {
-        (fabricCanvas.backgroundImage as any).filters = [blurFilter];
-        (fabricCanvas.backgroundImage as any).applyFilters();
-      }
-    }
-    
-    fabricCanvas.renderAll();
-    
-    toast({
-      title: "Background Applied",
-      description: `${currentType} background applied to canvas`,
-    });
-  }, [fabricCanvas, currentType, currentColor, currentGradient, currentSelectedBackground, currentOpacity, currentBlur]);
 
-  // Helper function to convert hex color to rgba with opacity
-  const hexToRgba = (hex: string, opacity: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    switch (backgroundType) {
+      case 'color':
+        fabricCanvas.backgroundColor = backgroundColor;
+        break;
+      case 'gradient':
+        // Apply gradient logic here
+        break;
+      case 'image':
+        if (selectedBackgroundImage) {
+          FabricImage.fromURL(selectedBackgroundImage)
+            .then((img: any) => {
+              const canvasWidth = fabricCanvas.width;
+              const canvasHeight = fabricCanvas.height;
+              
+              img.scaleToWidth(canvasWidth);
+              img.scaleToHeight(canvasHeight);
+              img.set({
+                left: 0,
+                top: 0,
+                selectable: false,
+                evented: false,
+              });
+              
+              fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
+            });
+        }
+        break;
+      default:
+        break;
+    }
+    fabricCanvas.renderAll();
   };
 
-  // Helper function to create Fabric.js gradient from CSS gradient
-  const createFabricGradient = (cssGradient: string, opacity: number) => {
-    // Parse CSS gradient to extract colors and direction
-    const gradientMatch = cssGradient.match(/linear-gradient\(([^)]+)\)/);
-    if (!gradientMatch) return 'transparent';
-    
-    const gradientContent = gradientMatch[1];
-    const colorStops = gradientContent.split(',').map(stop => stop.trim());
-    
-    // Extract direction (simplified - assumes 135deg for most gradients)
-    const direction = colorStops[0];
-    const isDiagonal = direction.includes('135deg');
-    
-    // Extract colors
-    const colors = colorStops.slice(1).map(stop => {
-      const colorMatch = stop.match(/#[a-fA-F0-9]{6}/);
-      if (colorMatch) {
-        const hex = colorMatch[0];
-        return hexToRgba(hex, opacity);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        setUploadedBackgrounds([...uploadedBackgrounds, result]);
+        setSelectedBackgroundImage(result);
       }
-      return 'transparent';
-    });
-    
-    // Create Fabric.js gradient object
-    const gradient = new (fabric.Gradient as any)({
-      type: 'linear',
-      coords: {
-        x1: isDiagonal ? 0 : 0,
-        y1: isDiagonal ? 0 : 0,
-        x2: isDiagonal ? fabricCanvas?.width || 400 : 0,
-        y2: isDiagonal ? fabricCanvas?.height || 400 : fabricCanvas?.height || 400,
-      },
-      colorStops: [
-        { offset: 0, color: colors[0] || 'transparent' },
-        { offset: 1, color: colors[1] || 'transparent' }
-      ]
-    });
-    
-    return gradient;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-4">
-      {/* Background Type Selector */}
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Background Type</h4>
-        <div className="grid grid-cols-2 gap-2">
+      {/* Background Type Selection */}
+      <div className="grid grid-cols-2 gap-2">
+        {backgroundTypes.map(({ type, label, icon: Icon, soon }) => (
           <Button
-            variant={selectedType === 'color' ? 'default' : 'outline'}
+            key={type}
+            variant={backgroundType === type ? 'default' : 'outline'}
             size="sm"
-            onClick={() => handleTypeChange('color')}
-            className="flex items-center gap-2"
+            onClick={() => setBackgroundType(type)}
+            className="flex flex-col items-center gap-1 h-auto py-3 relative"
+            disabled={soon}
           >
-            <Palette className="w-4 h-4" />
-            Color
+            {soon && (
+              <Badge className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs">
+                soon
+              </Badge>
+            )}
+            <Icon className="w-4 h-4" />
+            <span className="text-xs">{label}</span>
           </Button>
-          <Button
-            variant={selectedType === 'gradient' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTypeChange('gradient')}
-            className="flex items-center gap-2"
-          >
-            <Zap className="w-4 h-4" />
-            Gradient
-          </Button>
-          <Button
-            variant={selectedType === 'pattern' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTypeChange('pattern')}
-            className="flex items-center gap-2"
-          >
-            <Grid3X3 className="w-4 h-4" />
-            Pattern
-          </Button>
-          <Button
-            variant={selectedType === 'image' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTypeChange('image')}
-            className="flex items-center gap-2"
-          >
-            <Image className="w-4 h-4" />
-            Image
-          </Button>
-        </div>
+        ))}
       </div>
 
-             {/* Preview */}
-       <Card className="p-4">
-         <div className="flex items-center justify-between mb-2">
-           <h5 className="text-sm font-medium">Preview</h5>
-           <Badge variant="secondary" className="text-xs">
-             {currentType}
-           </Badge>
-         </div>
-         <div 
-           className="w-full h-24 rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
-           style={previewStyle}
-           onClick={applyBackgroundToCanvas}
-           title="Click to apply this background to the canvas"
-         />
-       </Card>
+      <Separator />
 
-             {/* Color Options */}
-       {currentType === 'color' && (
-         <div className="space-y-2">
-           <h4 className="text-sm font-medium">Solid Colors</h4>
-           <div className="grid grid-cols-6 gap-2">
-             {solidColors.map((color) => (
-               <button
-                 key={color}
-                 className={`w-8 h-8 rounded-md border-2 ${
-                   currentColor === color ? 'border-primary' : 'border-border'
-                 }`}
-                 style={{ backgroundColor: color }}
-                 onClick={() => handleColorSelect(color)}
-               />
-             ))}
-           </div>
-           <Input
-             type="color"
-             value={currentColor}
-             onChange={(e) => handleColorSelect(e.target.value)}
-             className="w-full h-10"
-           />
-         </div>
-       )}
-
-             {/* Gradient Options */}
-       {currentType === 'gradient' && (
-         <div className="space-y-2">
-           <h4 className="text-sm font-medium">Gradient Presets</h4>
-           <div className="grid grid-cols-2 gap-2">
-             {gradientPresets.map((gradient) => (
-               <Button
-                 key={gradient.id}
-                 variant={currentGradient.id === gradient.id ? 'default' : 'outline'}
-                 size="sm"
-                 onClick={() => handleGradientSelect(gradient)}
-                 className="h-12 p-2"
-               >
-                 <div 
-                   className="w-full h-full rounded-sm"
-                   style={{ background: gradient.value }}
-                 />
-                 <span className="ml-2 text-xs">{gradient.name}</span>
-               </Button>
-             ))}
-           </div>
-         </div>
-       )}
-
-       {/* Pattern Options */}
-       {currentType === 'pattern' && (
-         <div className="space-y-2">
-           <h4 className="text-sm font-medium">Patterns</h4>
-           <div className="grid grid-cols-3 gap-2">
-             {patternOptions.map((pattern) => {
-               const Icon = pattern.icon;
-               return (
-                 <Button
-                   key={pattern.id}
-                   variant={currentPattern.id === pattern.id ? 'default' : 'outline'}
-                   size="sm"
-                   onClick={() => handlePatternSelect(pattern)}
-                   className="flex flex-col items-center gap-1 h-auto py-3"
-                 >
-                   <Icon className="w-4 h-4" />
-                   <span className="text-xs">{pattern.name}</span>
-                 </Button>
-               );
-             })}
-           </div>
-         </div>
-       )}
-
-       {/* Image Options */}
-       {currentType === 'image' && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Background Images</h4>
-          
-          {/* Upload Area */}
-          <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-            <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Upload background image
-            </p>
-            <label className="cursor-pointer">
-              <Button variant="outline" size="sm" asChild>
-                <span>Choose Image</span>
-              </Button>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </label>
+      {/* Color Background */}
+      {backgroundType === 'color' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              type="color"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              className="w-12 h-8 rounded border-0 p-0"
+            />
+            <Input
+              type="text"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              className="flex-1"
+              placeholder="#ffffff"
+            />
           </div>
-
-                     {/* Uploaded Images */}
-           {currentUploadedBackgrounds.length > 0 && (
-             <div className="space-y-2">
-               <h5 className="text-sm font-medium">Your Images</h5>
-               <div className="grid grid-cols-2 gap-2">
-                 {currentUploadedBackgrounds.map((imageUrl, index) => (
-                   <div key={index} className="relative group">
-                     <div 
-                       className={`aspect-video rounded-lg border-2 cursor-pointer ${
-                         currentSelectedBackground === imageUrl ? 'border-primary' : 'border-border'
-                       }`}
-                       style={{
-                         backgroundImage: `url(${imageUrl})`,
-                         backgroundSize: 'cover',
-                         backgroundPosition: 'center'
-                       }}
-                       onClick={() => setCurrentSelectedBackground(imageUrl)}
-                     />
-                     <Button
-                       variant="destructive"
-                       size="sm"
-                       className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                       onClick={() => removeBackground(imageUrl)}
-                     >
-                       ×
-                     </Button>
-                   </div>
-                 ))}
-               </div>
-             </div>
-           )}
         </div>
       )}
 
-      <Separator />
-
-      {/* Background Effects */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium">Effects</h4>
-        
-                 <div className="space-y-2">
-           <div className="flex items-center justify-between">
-             <label className="text-sm font-medium">Opacity</label>
-             <span className="text-xs text-muted-foreground">{currentOpacity[0]}%</span>
-           </div>
-           <Slider
-             value={currentOpacity}
-             onValueChange={setCurrentOpacity}
-             max={100}
-             min={0}
-             step={1}
-             className="w-full"
-           />
-         </div>
-
-         <div className="space-y-2">
-           <div className="flex items-center justify-between">
-             <label className="text-sm font-medium">Blur</label>
-             <span className="text-xs text-muted-foreground">{currentBlur[0]}px</span>
-           </div>
-           <Slider
-             value={currentBlur}
-             onValueChange={setCurrentBlur}
-             max={20}
-             min={0}
-             step={1}
-             className="w-full"
-           />
-         </div>
-      </div>
-
-      <Separator />
-
-      {/* Quick Actions */}
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Quick Actions</h4>
-        <div className="grid grid-cols-2 gap-2">
-                     <Button
-             variant="outline"
-             size="sm"
-             onClick={() => {
-               setCurrentColor('#ffffff');
-               setCurrentType('color');
-               setCurrentOpacity([100]);
-               setCurrentBlur([0]);
-             }}
-           >
-             <Eye className="w-4 h-4 mr-2" />
-             Reset
-           </Button>
-           <Button
-             variant="outline"
-             size="sm"
-             onClick={() => {
-               setCurrentColor('#000000');
-               setCurrentType('color');
-             }}
-           >
-             <EyeOff className="w-4 h-4 mr-2" />
-             Black
-           </Button>
+      {/* Gradient Background */}
+      {backgroundType === 'gradient' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            {gradientPresets.map((preset) => (
+              <Button
+                key={preset.name}
+                variant="outline"
+                size="sm"
+                onClick={() => setBackgroundGradient(preset)}
+                className="h-8 p-0 overflow-hidden"
+                style={{
+                  background: `linear-gradient(45deg, ${preset.colors[0]}, ${preset.colors[1]})`
+                }}
+              >
+                <span className="sr-only">{preset.name}</span>
+              </Button>
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* Pattern Background */}
+      {backgroundType === 'pattern' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            {patternPresets.map((preset) => (
+              <Button
+                key={preset.name}
+                variant="outline"
+                size="sm"
+                onClick={() => setBackgroundPattern(preset)}
+                className="flex items-center gap-2"
+              >
+                <span className="text-xs">{preset.name}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Background */}
+      {backgroundType === 'image' && (
+        <div className="space-y-3">
+          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              id="bg-upload"
+            />
+            <label htmlFor="bg-upload" className="cursor-pointer flex flex-col items-center gap-2">
+              <Upload className="w-6 h-6 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Upload background image
+              </span>
+            </label>
+          </div>
+
+          {uploadedBackgrounds.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {uploadedBackgrounds.map((url, index) => (
+                <div key={index} className="relative group">
+                  <Button
+                    variant="outline"
+                    className={`w-full h-16 p-0 overflow-hidden ${
+                      selectedBackgroundImage === url ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => setSelectedBackgroundImage(url)}
+                  >
+                    <img
+                      src={url}
+                      alt={`Background ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      const newBgs = uploadedBackgrounds.filter((_, i) => i !== index);
+                      setUploadedBackgrounds(newBgs);
+                      if (selectedBackgroundImage === url) {
+                        setSelectedBackgroundImage('');
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Advanced Controls */}
+      <div className="space-y-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-2 w-full justify-center"
+        >
+          {showAdvanced ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+        </Button>
+
+        {showAdvanced && (
+          <Card className="p-3 space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Opacity: {backgroundOpacity[0]}%
+              </label>
+              <Slider
+                value={backgroundOpacity}
+                onValueChange={setBackgroundOpacity}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Blur: {backgroundBlur[0]}px
+              </label>
+              <Slider
+                value={backgroundBlur}
+                onValueChange={setBackgroundBlur}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          </Card>
+        )}
       </div>
+
+      {/* Apply Button */}
+      <Button onClick={applyBackground} className="w-full" variant="creative">
+        <Palette className="w-4 h-4 mr-2" />
+        Apply Background
+      </Button>
     </div>
   );
 };

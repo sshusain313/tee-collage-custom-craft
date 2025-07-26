@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +14,12 @@ import {
   CheckCircle,
   Copy,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Vote,
+  Trophy
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { CollageStyleCard, CollageStyle } from './CollageStyleCard';
 
 interface MemberSubmission {
   id: string;
@@ -26,6 +28,13 @@ interface MemberSubmission {
   message?: string;
   photoUrl?: string;
   submittedAt: Date;
+  collageStyleVote?: CollageStyle;
+}
+
+interface VoteData {
+  hexagonal: number;
+  square: number;
+  circular: number;
 }
 
 export const ProjectDashboard = () => {
@@ -42,6 +51,24 @@ export const ProjectDashboard = () => {
     createdAt: new Date('2025-01-15'),
   };
 
+  const voteData: VoteData = {
+    hexagonal: 12,
+    square: 8,
+    circular: 5
+  };
+
+  const totalVotes = voteData.hexagonal + voteData.square + voteData.circular;
+  const getPercentage = (count: number) => totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+  
+  const getWinningStyle = (): CollageStyle => {
+    const styles: Array<{ style: CollageStyle; votes: number }> = [
+      { style: 'hexagonal', votes: voteData.hexagonal },
+      { style: 'square', votes: voteData.square },
+      { style: 'circular', votes: voteData.circular }
+    ];
+    return styles.sort((a, b) => b.votes - a.votes)[0].style;
+  };
+
   const submissions: MemberSubmission[] = [
     {
       id: '1',
@@ -50,6 +77,7 @@ export const ProjectDashboard = () => {
       message: 'Thanks for the amazing memories everyone! 🎓',
       photoUrl: '/placeholder.svg',
       submittedAt: new Date('2025-01-20T10:30:00'),
+      collageStyleVote: 'hexagonal'
     },
     {
       id: '2',
@@ -58,6 +86,7 @@ export const ProjectDashboard = () => {
       message: 'Four years flew by so fast!',
       photoUrl: '/placeholder.svg',
       submittedAt: new Date('2025-01-20T14:15:00'),
+      collageStyleVote: 'square'
     },
     {
       id: '3',
@@ -65,11 +94,18 @@ export const ProjectDashboard = () => {
       message: 'Love you all! Keep in touch 💕',
       photoUrl: '/placeholder.svg',
       submittedAt: new Date('2025-01-21T09:45:00'),
+      collageStyleVote: 'hexagonal'
     },
   ];
 
   const submissionRate = (submissions.length / projectData.totalMembers) * 100;
   const remainingCount = projectData.totalMembers - submissions.length;
+
+  const collageStyles = [
+    { style: 'hexagonal' as CollageStyle, label: 'Hexagonal' },
+    { style: 'square' as CollageStyle, label: 'Square Grid' },
+    { style: 'circular' as CollageStyle, label: 'Circular' }
+  ];
 
   const handleShareLink = () => {
     navigator.clipboard.writeText(projectData.shareLink);
@@ -124,47 +160,93 @@ export const ProjectDashboard = () => {
         </p>
       </div>
 
-      {/* Progress Overview */}
-      <Card className="bg-gradient-card shadow-elegant">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-primary" />
-            Collecting memories...
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="text-center space-y-4">
-            <div className="text-3xl font-bold">
-              {submissions.length} of {projectData.totalMembers}
+      {/* Progress Overview and Voting Results */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Progress Overview */}
+        <Card className="bg-gradient-card shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-primary" />
+              Collecting memories...
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center space-y-4">
+              <div className="text-3xl font-bold">
+                {submissions.length} of {projectData.totalMembers}
+              </div>
+              <Progress value={submissionRate} className="h-3" />
+              <p className="text-lg text-muted-foreground">
+                {getEncouragementMessage()}
+              </p>
             </div>
-            <Progress value={submissionRate} className="h-3" />
-            <p className="text-lg text-muted-foreground">
-              {getEncouragementMessage()}
-            </p>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Button onClick={handleShareLink} variant="hero" className="flex items-center gap-2">
-              <Share2 className="w-4 h-4" />
-              Share Link Again
-            </Button>
-            <Button onClick={handleDownloadSubmissions} variant="outline" className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Download Submissions
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button onClick={handleShareLink} variant="hero" className="flex items-center gap-2">
+                <Share2 className="w-4 h-4" />
+                Share Link Again
+              </Button>
+              <Button onClick={handleDownloadSubmissions} variant="outline" className="flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Download Submissions
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Voting Results */}
+        <Card className="bg-gradient-card shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Vote className="w-5 h-5 text-primary" />
+              Style Voting Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                <span className="font-medium">
+                  {collageStyles.find(s => s.style === getWinningStyle())?.label} is leading!
+                </span>
+              </div>
+              <div className="text-sm text-muted-foreground mb-4">
+                Total votes: {totalVotes}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {collageStyles.map(({ style, label }) => (
+                <div key={style} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{voteData[style]} votes</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {getPercentage(voteData[style])}%
+                        </Badge>
+                      </div>
+                    </div>
+                    <Progress value={getPercentage(voteData[style])} className="h-2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <Button 
               onClick={handleStartCollageEditor} 
               variant="creative" 
-              className="flex items-center gap-2"
+              className="w-full flex items-center gap-2"
               disabled={submissions.length === 0}
             >
               <Palette className="w-4 h-4" />
               Start Collage Editor
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Submissions Section */}
       <Card className="bg-gradient-card shadow-elegant">
@@ -223,11 +305,18 @@ export const ProjectDashboard = () => {
                       <div className={`flex-1 ${viewMode === 'grid' ? 'text-center' : ''} space-y-2`}>
                         <div>
                           <h4 className="font-semibold">{submission.name}</h4>
-                          {submission.role && (
-                            <Badge variant="secondary" className="text-xs">
-                              {submission.role}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-2 justify-center">
+                            {submission.role && (
+                              <Badge variant="secondary" className="text-xs">
+                                {submission.role}
+                              </Badge>
+                            )}
+                            {submission.collageStyleVote && (
+                              <Badge variant="outline" className="text-xs">
+                                Voted: {collageStyles.find(s => s.style === submission.collageStyleVote)?.label}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         
                         {submission.message && (
@@ -239,7 +328,7 @@ export const ProjectDashboard = () => {
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                           <Clock className="w-3 h-3" />
                           {submission.submittedAt.toLocaleDateString()} at {submission.submittedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
