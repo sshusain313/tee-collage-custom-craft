@@ -12,6 +12,7 @@ export interface GridCell {
   centerY: number;
   size: number;
   type: GridType;
+  isCenter?: boolean;
 }
 
 // Helper to fit an image to a cell's current geometry
@@ -24,7 +25,7 @@ export function fitImageToCell(img: any, cell: GridCell) {
 
   if (cell.type === 'hexagonal') {
     const points = [];
-    const hexSize = cellWidth / 2; // Use actual cell width
+    const hexSize = cellWidth / 2;
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
       points.push({
@@ -108,21 +109,20 @@ export function fitImageToCell(img: any, cell: GridCell) {
 }
 
 export const useGridTemplates = () => {
-  const createHexagonalGrid = useCallback((canvas: FabricCanvas) => {
-    // 1 large center hexagon, 6 smaller hexagons tightly surrounding it (total 7)
+  const createHexagonalGrid = useCallback((canvas: FabricCanvas, memberCount: number = 7) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
-    // Large center hex size
-    const largeHexSize = Math.min(canvasWidth, canvasHeight) / 4.5;
-    // Small hex size (for ring)
-    const smallHexSize = largeHexSize / 2;
-    const gap = 2; // Minimal gap between hexagons
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
+    
+    // Calculate sizes based on member count
+    const largeHexSize = Math.min(canvasWidth, canvasHeight) / 6;
+    const smallHexSize = largeHexSize / 2;
+    const gap = 4;
     const cells: GridCell[] = [];
 
-    // Helper to create a hexagon at (cx, cy) with given size
-    function makeHex(cx: number, cy: number, size: number) {
+    // Helper to create a hexagon
+    function makeHex(cx: number, cy: number, size: number, isCenter: boolean = false) {
       const points = [];
       for (let i = 0; i < 6; i++) {
         const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -135,8 +135,8 @@ export const useGridTemplates = () => {
         left: cx,
         top: cy,
         fill: 'rgba(200, 200, 200, 0.1)',
-        stroke: 'hsl(280, 100%, 60%)',
-        strokeWidth: 1.5,
+        stroke: isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+        strokeWidth: isCenter ? 3 : 1.5,
         selectable: true,
         hasControls: true,
         hasBorders: true,
@@ -146,176 +146,226 @@ export const useGridTemplates = () => {
       });
     }
 
-    // Center large hexagon
+    // Center large hexagon (index 0)
     cells.push({
-      shape: makeHex(centerX, centerY, largeHexSize),
+      shape: makeHex(centerX, centerY, largeHexSize, true),
       image: null,
       index: 0,
       centerX: centerX,
       centerY: centerY,
       size: largeHexSize,
-      type: 'hexagonal'
+      type: 'hexagonal',
+      isCenter: true
     });
 
-    // 6 surrounding small hexagons
-    for (let i = 0; i < 6; i++) {
-      const angle = Math.PI / 3 * i;
-      // Distance from center: largeHexSize + smallHexSize + gap
-      const dist = largeHexSize + smallHexSize + gap;
-      const cx = centerX + dist * Math.cos(angle);
-      const cy = centerY + dist * Math.sin(angle);
-      cells.push({
-        shape: makeHex(cx, cy, smallHexSize),
-        image: null,
-        index: i + 1,
-        centerX: cx,
-        centerY: cy,
-        size: smallHexSize,
-        type: 'hexagonal'
-      });
-    }
-
-    return cells;
-  }, []);
-
-  const createSquareGrid = useCallback((canvas: FabricCanvas) => {
-    // Only support 4x4 for this special layout
-    const rows = 4;
-    const columns = 4;
-    const canvasWidth = canvas.width!;
-    const canvasHeight = canvas.height!;
-    
-    const cellSize = Math.min(canvasWidth, canvasHeight) / (Math.max(rows, columns) + 1);
-    const startX = (canvasWidth - columns * cellSize) / 2;
-    const startY = (canvasHeight - rows * cellSize) / 2;
-    
-    const cells: GridCell[] = [];
-
-    // Outer cells (skip center 2x2 block)
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        // Skip the center 2x2 block (rows 1,2 and cols 1,2)
-        if (row >= 1 && row <= 2 && col >= 1 && col <= 2) continue;
-        const x = startX + col * cellSize;
-        const y = startY + row * cellSize;
-
-        const square = new Rect({
-          left: x,
-          top: y,
-          width: cellSize * 0.9,
-          height: cellSize * 0.9,
-          fill: 'rgba(200, 200, 200, 0.1)',
-          stroke: 'hsl(280, 100%, 60%)',
-          strokeWidth: 1.5,
-          selectable: true,
-          hasControls: true,
-          hasBorders: true,
-          evented: true,
+    // Surrounding hexagons
+    const surroundingCount = memberCount - 1;
+    if (surroundingCount > 0) {
+      // First ring: 6 hexagons max
+      const firstRingCount = Math.min(surroundingCount, 6);
+      for (let i = 0; i < firstRingCount; i++) {
+        const angle = (Math.PI / 3) * i;
+        const dist = largeHexSize + smallHexSize + gap;
+        const cx = centerX + dist * Math.cos(angle);
+        const cy = centerY + dist * Math.sin(angle);
+        
+        cells.push({
+          shape: makeHex(cx, cy, smallHexSize),
+          image: null,
+          index: i + 1,
+          centerX: cx,
+          centerY: cy,
+          size: smallHexSize,
+          type: 'hexagonal'
         });
+      }
 
-        cells.push({ 
-          shape: square,
-          image: null, 
-          index: cells.length,
-          centerX: x + cellSize * 0.45,
-          centerY: y + cellSize * 0.45,
-          size: cellSize * 0.9,
-          type: 'square'
-        });
+      // Second ring if needed
+      if (surroundingCount > 6) {
+        const secondRingCount = Math.min(surroundingCount - 6, 12);
+        for (let i = 0; i < secondRingCount; i++) {
+          const angle = (Math.PI / 6) * i;
+          const dist = largeHexSize + smallHexSize * 2 + gap * 2;
+          const cx = centerX + dist * Math.cos(angle);
+          const cy = centerY + dist * Math.sin(angle);
+          
+          cells.push({
+            shape: makeHex(cx, cy, smallHexSize * 0.8),
+            image: null,
+            index: i + 7,
+            centerX: cx,
+            centerY: cy,
+            size: smallHexSize * 0.8,
+            type: 'hexagonal'
+          });
+        }
       }
     }
 
-    // Add one large center cell (covering the center 2x2 block)
-    const centerX = startX + cellSize * 2.0;
-    const centerY = startY + cellSize * 2.0;
-    const centerSquare = new Rect({
-      left: centerX - cellSize,
-      top: centerY - cellSize,
-      width: cellSize * 2 * 0.9,
-      height: cellSize * 2 * 0.9,
-      fill: 'rgba(200, 200, 200, 0.1)',
-      stroke: 'hsl(280, 100%, 60%)',
-      strokeWidth: 2,
-      selectable: true,
-      hasControls: true,
-      hasBorders: true,
-      evented: true,
-    });
-    cells.push({
-      shape: centerSquare,
-      image: null,
-      index: cells.length,
-      centerX: centerX,
-      centerY: centerY,
-      size: cellSize * 2 * 0.9,
-      type: 'square'
-    });
-
     return cells;
   }, []);
 
-  const createCenterFocusGrid = useCallback((canvas: FabricCanvas, count = 8) => {
+  const createSquareGrid = useCallback((canvas: FabricCanvas, memberCount: number = 9) => {
     const canvasWidth = canvas.width!;
     const canvasHeight = canvas.height!;
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
+    // Calculate sizes
+    const largeCellSize = Math.min(canvasWidth, canvasHeight) / 5;
+    const smallCellSize = largeCellSize / 2;
+    const gap = 4;
     const cells: GridCell[] = [];
 
-    // Main center circle
-    const centerCircle = new Circle({
-      left: centerX - 60,
-      top: centerY - 60,
-      radius: 60,
-      fill: 'rgba(200, 200, 200, 0.1)',
-      stroke: 'hsl(280, 100%, 60%)',
-      strokeWidth: 2,
-      selectable: true,
-      hasControls: true,
-      hasBorders: true,
-      evented: true,
-    });
-
-    cells.push({ 
-      shape: centerCircle,
-      image: null, 
-      index: 0,
-      centerX: centerX,
-      centerY: centerY,
-      size: 60,
-      type: 'center-focus'
-    });
-
-    // Surrounding smaller circles
-    const surroundingRadius = 120;
-    const surroundingSize = 30;
-    for (let i = 0; i < count; i++) {
-      const angle = (2 * Math.PI * i) / count;
-      const x = centerX + surroundingRadius * Math.cos(angle);
-      const y = centerY + surroundingRadius * Math.sin(angle);
-
-      const circle = new Circle({
-        left: x - surroundingSize,
-        top: y - surroundingSize,
-        radius: surroundingSize,
+    // Helper to create a square
+    function makeSquare(cx: number, cy: number, size: number, isCenter: boolean = false) {
+      return new Rect({
+        left: cx - size / 2,
+        top: cy - size / 2,
+        width: size,
+        height: size,
         fill: 'rgba(200, 200, 200, 0.1)',
-        stroke: 'hsl(280, 100%, 60%)',
-        strokeWidth: 1.5,
+        stroke: isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+        strokeWidth: isCenter ? 3 : 1.5,
         selectable: true,
         hasControls: true,
         hasBorders: true,
         evented: true,
       });
+    }
 
-      cells.push({ 
-        shape: circle,
-        image: null, 
-        index: cells.length,
-        centerX: x,
-        centerY: y,
-        size: surroundingSize,
-        type: 'center-focus'
+    // Center large square (index 0)
+    cells.push({
+      shape: makeSquare(centerX, centerY, largeCellSize, true),
+      image: null,
+      index: 0,
+      centerX: centerX,
+      centerY: centerY,
+      size: largeCellSize,
+      type: 'square',
+      isCenter: true
+    });
+
+    // Surrounding squares in a grid pattern
+    const surroundingCount = memberCount - 1;
+    if (surroundingCount > 0) {
+      const positions = [
+        // First ring (8 positions around center)
+        { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 },
+        // Second ring (16 positions)
+        { x: -2, y: -2 }, { x: -1, y: -2 }, { x: 0, y: -2 }, { x: 1, y: -2 }, { x: 2, y: -2 },
+        { x: -2, y: -1 }, { x: 2, y: -1 },
+        { x: -2, y: 0 }, { x: 2, y: 0 },
+        { x: -2, y: 1 }, { x: 2, y: 1 },
+        { x: -2, y: 2 }, { x: -1, y: 2 }, { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 }
+      ];
+
+      for (let i = 0; i < Math.min(surroundingCount, positions.length); i++) {
+        const pos = positions[i];
+        const distance = largeCellSize / 2 + smallCellSize / 2 + gap;
+        const cx = centerX + pos.x * distance;
+        const cy = centerY + pos.y * distance;
+        
+        cells.push({
+          shape: makeSquare(cx, cy, smallCellSize),
+          image: null,
+          index: i + 1,
+          centerX: cx,
+          centerY: cy,
+          size: smallCellSize,
+          type: 'square'
+        });
+      }
+    }
+
+    return cells;
+  }, []);
+
+  const createCenterFocusGrid = useCallback((canvas: FabricCanvas, memberCount: number = 9) => {
+    const canvasWidth = canvas.width!;
+    const canvasHeight = canvas.height!;
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+    
+    // Calculate sizes
+    const largeCellSize = Math.min(canvasWidth, canvasHeight) / 6;
+    const smallCellSize = largeCellSize / 2;
+    const cells: GridCell[] = [];
+
+    // Helper to create a circle
+    function makeCircle(cx: number, cy: number, radius: number, isCenter: boolean = false) {
+      return new Circle({
+        left: cx - radius,
+        top: cy - radius,
+        radius: radius,
+        fill: 'rgba(200, 200, 200, 0.1)',
+        stroke: isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+        strokeWidth: isCenter ? 3 : 1.5,
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        evented: true,
       });
+    }
+
+    // Center large circle (index 0)
+    cells.push({
+      shape: makeCircle(centerX, centerY, largeCellSize, true),
+      image: null,
+      index: 0,
+      centerX: centerX,
+      centerY: centerY,
+      size: largeCellSize,
+      type: 'center-focus',
+      isCenter: true
+    });
+
+    // Surrounding circles
+    const surroundingCount = memberCount - 1;
+    if (surroundingCount > 0) {
+      // First ring
+      const firstRingCount = Math.min(surroundingCount, 8);
+      const firstRingRadius = largeCellSize + smallCellSize + 20;
+      
+      for (let i = 0; i < firstRingCount; i++) {
+        const angle = (2 * Math.PI * i) / firstRingCount;
+        const cx = centerX + firstRingRadius * Math.cos(angle);
+        const cy = centerY + firstRingRadius * Math.sin(angle);
+        
+        cells.push({
+          shape: makeCircle(cx, cy, smallCellSize),
+          image: null,
+          index: i + 1,
+          centerX: cx,
+          centerY: cy,
+          size: smallCellSize,
+          type: 'center-focus'
+        });
+      }
+
+      // Second ring if needed
+      if (surroundingCount > 8) {
+        const secondRingCount = Math.min(surroundingCount - 8, 12);
+        const secondRingRadius = largeCellSize + smallCellSize * 2 + 40;
+        
+        for (let i = 0; i < secondRingCount; i++) {
+          const angle = (2 * Math.PI * i) / secondRingCount;
+          const cx = centerX + secondRingRadius * Math.cos(angle);
+          const cy = centerY + secondRingRadius * Math.sin(angle);
+          
+          cells.push({
+            shape: makeCircle(cx, cy, smallCellSize * 0.8),
+            image: null,
+            index: i + 9,
+            centerX: cx,
+            centerY: cy,
+            size: smallCellSize * 0.8,
+            type: 'center-focus'
+          });
+        }
+      }
     }
 
     return cells;

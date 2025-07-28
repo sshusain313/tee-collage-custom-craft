@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas as FabricCanvas, FabricImage } from 'fabric';
@@ -72,16 +71,17 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
 
       setProject(loadedProject);
       
-      // Determine winning style - map from CollageStyle to GridType
+      // Determine winning style based on votes
       const styleMapping: Record<CollageStyle, GridType> = {
         'hexagonal': 'hexagonal',
         'square': 'square', 
         'circular': 'center-focus'
       };
       
-      const styles = ['hexagonal', 'square', 'circular'] as CollageStyle[];
+      const votes = loadedProject.votes;
+      const styles = Object.keys(votes) as CollageStyle[];
       const winningCollageStyle = styles.reduce((prev, current) => 
-        loadedProject.votes[current] > loadedProject.votes[prev] ? current : prev
+        votes[current] > votes[prev] ? current : prev
       );
       
       setWinningStyle(styleMapping[winningCollageStyle]);
@@ -120,12 +120,12 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
     // Load T-shirt mockup
     await loadTshirtMockup(tshirtCanvasInstance);
     
-    // Create collage layout using grid templates
+    // Create collage layout using grid templates with memberCount
     await createCollageWithGridTemplates(collageCanvasInstance, tshirtCanvasInstance);
 
     toast({
       title: "Editor ready! 🎨",
-      description: `Using ${winningStyle} layout with ${project.submissions.length} photos`,
+      description: `Using ${winningStyle} layout with ${project.memberCount} total slots`,
     });
   };
 
@@ -145,7 +145,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
     } catch (error) {
       console.error('Error loading T-shirt mockup:', error);
       // Fallback: create a simple T-shirt shape
-      const tshirtRect = new fabric.Rect({
+      const tshirtRect = new Rect({
         left: 50,
         top: 50,
         width: canvas.width! - 100,
@@ -164,34 +164,38 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
   };
 
   const createCollageWithGridTemplates = async (collageCanvas: FabricCanvas, tshirtCanvas: FabricCanvas) => {
-    if (!project?.submissions.length) return;
+    if (!project) return;
 
+    // Use memberCount for total cells, not submission count
+    const memberCount = project.memberCount;
     const submissions = project.submissions;
     
-    // Create grid cells using the appropriate template
+    // Create grid cells using the winning template with memberCount
     let cells: GridCell[] = [];
     
     if (winningStyle === 'hexagonal') {
-      cells = createHexagonalGrid(collageCanvas);
+      cells = createHexagonalGrid(collageCanvas, memberCount);
     } else if (winningStyle === 'square') {
-      cells = createSquareGrid(collageCanvas);
+      cells = createSquareGrid(collageCanvas, memberCount);
     } else if (winningStyle === 'center-focus') {
-      // Use submission count to determine focus count, max 12
-      const focusCount = Math.min(submissions.length - 1, 8);
-      cells = createCenterFocusGrid(collageCanvas, focusCount);
+      cells = createCenterFocusGrid(collageCanvas, memberCount);
     }
 
-    // Limit cells to match number of submissions
-    cells = cells.slice(0, submissions.length);
     setGridCells(cells);
 
-    // Load images into cells
+    // Add grid shapes to canvas
+    cells.forEach(cell => {
+      collageCanvas.add(cell.shape);
+    });
+
+    // Load images into cells and create placeholders
     await loadImagesIntoCells(cells, submissions, collageCanvas, tshirtCanvas);
   };
 
   const loadImagesIntoCells = async (cells: GridCell[], submissions: MemberSubmission[], collageCanvas: FabricCanvas, tshirtCanvas: FabricCanvas) => {
     const loadPromises = cells.map(async (cell, index) => {
       if (index < submissions.length) {
+        // Load actual submission image
         const submission = submissions[index];
         try {
           const img = await FabricImage.fromURL(submission.photo);
@@ -199,7 +203,6 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
           // Fit image to cell for collage canvas
           fitImageToCell(img, cell);
           cell.image = img;
-          collageCanvas.add(cell.shape);
           collageCanvas.add(img);
 
           // Create scaled version for T-shirt canvas
@@ -207,12 +210,11 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
           const tshirtCell = {
             ...cell,
             shape: cell.shape.clone(),
-            centerX: 300 + (cell.centerX - 300) * 0.4, // Scale and center on T-shirt
+            centerX: 300 + (cell.centerX - 300) * 0.4,
             centerY: 400 + (cell.centerY - 300) * 0.4,
             size: cell.size * 0.4
           };
           
-          // Scale the T-shirt cell shape
           tshirtCell.shape.set({
             left: tshirtCell.centerX,
             top: tshirtCell.centerY,
@@ -228,7 +230,12 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
           
         } catch (error) {
           console.error('Error loading image for cell:', error);
+          // Add placeholder for failed image load
+          addPlaceholderToCell(cell, index, collageCanvas, tshirtCanvas);
         }
+      } else {
+        // Add placeholder for empty cell
+        addPlaceholderToCell(cell, index, collageCanvas, tshirtCanvas);
       }
     });
 
@@ -236,6 +243,77 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
     
     collageCanvas.renderAll();
     tshirtCanvas.renderAll();
+  };
+
+  const addPlaceholderToCell = (cell: GridCell, index: number, collageCanvas: FabricCanvas, tshirtCanvas: FabricCanvas) => {
+    // Create placeholder for collage canvas
+    const placeholderSize = cell.size * 0.8;
+    const placeholder = new Rect({
+      left: cell.centerX - placeholderSize / 2,
+      top: cell.centerY - placeholderSize / 2,
+      width: placeholderSize,
+      height: placeholderSize,
+      fill: cell.isCenter ? 'rgba(124, 58, 237, 0.1)' : 'rgba(200, 200, 200, 0.1)',
+      stroke: cell.isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+      strokeWidth: 2,
+      strokeDashArray: [5, 5],
+      selectable: false,
+      evented: false,
+      rx: 8,
+      ry: 8,
+    });
+    
+    const placeholderText = new Text(
+      index < project!.submissions.length ? `${index + 1}` : 'Empty',
+      {
+        left: cell.centerX,
+        top: cell.centerY,
+        fontSize: cell.isCenter ? 18 : 14,
+        fill: cell.isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+        fontWeight: 'bold',
+        originX: 'center',
+        originY: 'center',
+        selectable: false,
+        evented: false,
+      }
+    );
+    
+    collageCanvas.add(placeholder);
+    collageCanvas.add(placeholderText);
+
+    // Create smaller version for T-shirt canvas
+    const tshirtPlaceholder = new Rect({
+      left: 300 + (cell.centerX - 300) * 0.4 - (placeholderSize * 0.4) / 2,
+      top: 400 + (cell.centerY - 300) * 0.4 - (placeholderSize * 0.4) / 2,
+      width: placeholderSize * 0.4,
+      height: placeholderSize * 0.4,
+      fill: cell.isCenter ? 'rgba(124, 58, 237, 0.1)' : 'rgba(200, 200, 200, 0.1)',
+      stroke: cell.isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+      strokeWidth: 1,
+      strokeDashArray: [3, 3],
+      selectable: false,
+      evented: false,
+      rx: 4,
+      ry: 4,
+    });
+    
+    const tshirtText = new Text(
+      index < project!.submissions.length ? `${index + 1}` : 'E',
+      {
+        left: 300 + (cell.centerX - 300) * 0.4,
+        top: 400 + (cell.centerY - 300) * 0.4,
+        fontSize: cell.isCenter ? 10 : 8,
+        fill: cell.isCenter ? 'hsl(280, 100%, 50%)' : 'hsl(280, 100%, 60%)',
+        fontWeight: 'bold',
+        originX: 'center',
+        originY: 'center',
+        selectable: false,
+        evented: false,
+      }
+    );
+    
+    tshirtCanvas.add(tshirtPlaceholder);
+    tshirtCanvas.add(tshirtText);
   };
 
   const handleSaveCollage = () => {
@@ -334,7 +412,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="outline">{winningStyle} layout</Badge>
                 <span>•</span>
-                <span>{project.submissions.length} photos</span>
+                <span>{project.submissions.length} of {project.memberCount} photos uploaded</span>
               </div>
             </div>
           </div>
@@ -384,7 +462,10 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
                 Grid Template: <Badge variant="secondary">{winningStyle}</Badge>
               </span>
               <span className="text-sm text-muted-foreground">
-                • {project.submissions.length} photos loaded
+                • {project.submissions.length} photos uploaded of {project.memberCount} total slots
+              </span>
+              <span className="text-sm text-muted-foreground">
+                • Center cell is 2x larger
               </span>
             </div>
           </CardContent>
@@ -420,7 +501,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground text-center mt-4">
-                  Your collage using the {winningStyle} template with {project.submissions.length} member photos
+                  Your {winningStyle} collage with {project.memberCount} total slots (center cell is 2x larger)
                 </p>
               </CardContent>
             </Card>
