@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas as FabricCanvas, FabricImage } from 'fabric';
+import { Canvas as FabricCanvas, FabricImage, Rect, FabricText } from 'fabric';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -209,7 +209,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
           const tshirtImg = await FabricImage.fromURL(submission.photo);
           const tshirtCell = {
             ...cell,
-            shape: cell.shape.clone(),
+            shape: await cell.shape.clone(),
             centerX: 300 + (cell.centerX - 300) * 0.4,
             centerY: 400 + (cell.centerY - 300) * 0.4,
             size: cell.size * 0.4
@@ -263,7 +263,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
       ry: 8,
     });
     
-    const placeholderText = new Text(
+    const placeholderText = new FabricText(
       index < project!.submissions.length ? `${index + 1}` : 'Empty',
       {
         left: cell.centerX,
@@ -297,7 +297,7 @@ const CollageEditor: React.FC<CollageEditorProps> = () => {
       ry: 4,
     });
     
-    const tshirtText = new Text(
+    const tshirtText = new FabricText(
       index < project!.submissions.length ? `${index + 1}` : 'E',
       {
         left: 300 + (cell.centerX - 300) * 0.4,
